@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwichUI | Sales & Operational Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="login-container">
+        <div class="login-box">
+            <div class="login-logo">Swich<span>UI</span></div>
+            <h2>Admin Login</h2>
+            <p>Enter your credentials to access the dashboard.</p>
+            <form id="loginForm" onsubmit="event.preventDefault();">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" required placeholder="admin@swichui.com">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" required placeholder="••••••••">
+                </div>
+                <button type="button" class="btn-login" id="btnLogin">Login</button>
+            </form>
+            <div id="loginError" class="login-error" style="display: none; color: var(--danger); margin-top: 1rem; font-size: 0.875rem;"></div>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD (Hidden initially) -->
+    <div id="app-container" style="display: none;">
+        <aside>
+            <div class="logo">
+                Swich<span>UI</span>
+            </div>
+            <nav class="nav-menu">
+            <a href="#" class="nav-item active" id="nav-dashboard">Dashboard</a>
+            <a href="#" class="nav-item" id="nav-projects">Projects</a>
+            <a href="#" class="nav-item" id="nav-finances">Finances</a>
+            <a href="#" class="nav-item" id="nav-clients">Clients</a>
+        </nav>
+
+        <div class="crm-section">
+            <div class="crm-title">Recent Clients</div>
+            <div class="client-mini">
+                <div class="client-avatar">UK</div>
+                <div class="client-info">
+                    <h4>UMKM Kopi A</h4>
+                    <p>+62 812-3456-7890</p>
+                </div>
+            </div>
+            <div class="client-mini">
+                <div class="client-avatar">BR</div>
+                <div class="client-info">
+                    <h4>Batik Rahmat</h4>
+                    <p>+62 812-9876-5432</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main>
+        <header>
+            <div class="header-content">
+                <h1 id="view-title">Dashboard Overview</h1>
+                <p id="view-subtitle">Welcome back, SwichUI. Here's what's happening today.</p>
+            </div>
+            <button class="btn-add" id="btnAddProject">+ Add Project</button>
+        </header>
+
+        <!-- DASHBOARD VIEW -->
+        <section id="view-dashboard" class="content-view active">
+            <div class="dashboard-grid">
+                <!-- Header Stats -->
+                <div class="card stat-card">
+                    <div class="card-title">Total Revenue (Month)</div>
+                    <div class="stat-value"><span>Rp</span>0</div>
+                    <div class="stat-label">+12% from last month</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="card-title">Active Projects</div>
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">3 near deadline</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="card-title">Net Profit</div>
+                    <div class="stat-value"><span>Rp</span>0</div>
+                    <div class="stat-label">74% Profit Margin</div>
+                </div>
+
+                <!-- Production Status -->
+                <div class="card progress-container">
+                    <div class="card-title">Production Status</div>
+                    <div id="productionStatus">
+                        <!-- Progress bars injected via JS -->
+                    </div>
+                </div>
+
+                <!-- Financial Health -->
+                <div class="card chart-container">
+                    <div class="card-title">Financial Health (Gross vs Net)</div>
+                    <div class="simple-bar-chart" id="financialChart">
+                        <!-- Bars injected via JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROJECTS VIEW -->
+        <section id="view-projects" class="content-view">
+            <div class="card table-container">
+                <div class="card-title">
+                    Sales & Project Tracking
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Manage all projects here</span>
+                </div>
+                <table id="salesTable">
+                    <thead>
+                        <tr>
+                            <th>Client Name</th>
+                            <th>Service</th>
+                            <th>Status</th>
+                            <th>Revisions</th>
+                            <th>Total Value</th>
+                            <th>Remaining</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesTableBody">
+                        <!-- Data injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- FINANCES VIEW -->
+        <section id="view-finances" class="content-view">
+            <div class="dashboard-grid">
+                <div class="card stat-card" style="grid-column: span 6;">
+                    <div class="card-title">Detailed Financial Analysis</div>
+                    <div class="stat-value">Coming Soon</div>
+                    <p style="color:var(--text-muted); font-size:0.8rem;">Feature to track software subscriptions and advertising costs is in development.</p>
+                </div>
+                <div class="card stat-card" style="grid-column: span 6;">
+                    <div class="card-title">Cash Flow</div>
+                    <div class="stat-value">Coming Soon</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CLIENTS VIEW -->
+        <section id="view-clients" class="content-view">
+            <div class="card table-container">
+                <div class="card-title">Client Database</div>
+                <table id="clientTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>WhatsApp</th>
+                            <th>Total Projects</th>
+                            <th>Last Project</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientTableBody">
+                        <!-- Data injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    </div> <!-- End app-container -->
+
+    <!-- Invoice Template (Hidden) -->
+    <div id="invoiceTemplate" style="display: none; background: white; color: black; padding: 40px; width: 800px; font-family: sans-serif;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #D4AF37; padding-bottom: 20px; margin-bottom: 20px;">
+            <div>
+                <h1 style="margin: 0; color: #020617;">INVOICE</h1>
+                <p style="margin: 5px 0; color: #64748B;">SwichUI Digital Agency</p>
+            </div>
+            <div style="text-align: right;">
+                <p id="invId" style="font-weight: bold; margin: 0;">#INV-2024-001</p>
+                <p id="invDate" style="margin: 5px 0;">Date: April 29, 2026</p>
+            </div>
+        </div>
+        <div style="margin-bottom: 30px;">
+            <p style="font-weight: bold; margin-bottom: 10px;">Bill To:</p>
+            <p id="invClientName" style="margin: 0; font-size: 1.2rem;"></p>
+            <p id="invClientContact" style="margin: 5px 0; color: #64748B;"></p>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <thead>
+                <tr style="background: #F1F5F9;">
+                    <th style="padding: 10px; text-align: left; color: black; border-bottom: 1px solid #E2E8F0;">Description</th>
+                    <th style="padding: 10px; text-align: right; color: black; border-bottom: 1px solid #E2E8F0;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td id="invService" style="padding: 15px 10px; border-bottom: 1px solid #E2E8F0;"></td>
+                    <td id="invAmount" style="padding: 15px 10px; text-align: right; border-bottom: 1px solid #E2E8F0; font-weight: bold;"></td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="text-align: right;">
+            <p style="margin: 0; color: #64748B;">Total Amount Due:</p>
+            <h2 id="invTotal" style="margin: 5px 0; color: #020617;"></h2>
+        </div>
+        <div style="margin-top: 50px; border-top: 1px solid #E2E8F0; pt: 20px; font-size: 0.8rem; color: #94A3B8;">
+            <p>Thank you for choosing SwichUI. Payment is due within 7 days.</p>
+        </div>
+    </div>
+
+    <!-- Admin Modal -->
+    <div id="projectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Project</h2>
+                <span style="cursor:pointer" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="projectForm">
+                <input type="hidden" id="projectId">
+                <div class="form-group">
+                    <label>Client Name</label>
+                    <input type="text" id="clientName" required placeholder="UMKM Name">
+                </div>
+                <div class="form-group" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                    <div>
+                        <label>Service</label>
+                        <select id="serviceType">
+                            <option value="Logo Design">Logo Design</option>
+                            <option value="Poster Menu">Poster Menu</option>
+                            <option value="Instagram Feed">Instagram Feed</option>
+                            <option value="Branding Kit">Branding Kit</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Priority</label>
+                        <select id="priorityLevel">
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                    <div>
+                        <label>Total Contract (Rp)</label>
+                        <input type="number" id="totalValue" required>
+                    </div>
+                    <div>
+                        <label>DP Paid (Rp)</label>
+                        <input type="number" id="dpPaid" value="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Deadline</label>
+                    <input type="date" id="projectDeadline">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-add">Save Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content confirm-content">
+            <div class="confirm-icon">⚠️</div>
+            <h2 id="confirmTitle">Are you sure?</h2>
+            <p id="confirmMessage" style="color:var(--text-muted); margin: 1rem 0 2rem 0;">This action cannot be undone.</p>
+            <div style="display:flex; gap:1rem; justify-content: center;">
+                <button class="btn-secondary" onclick="closeConfirm()">Cancel</button>
+                <button id="confirmBtn" class="btn-danger">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="script.js?v=2"></script>
+</body>
+</html>
