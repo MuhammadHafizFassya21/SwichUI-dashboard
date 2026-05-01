@@ -353,6 +353,14 @@ async function handleFormSubmit(e) {
         status: newProj.status,
         kontak_wa: newProj.contact
     };
+
+    if (supabaseClient) {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            dbRow.user_id = user.id; // Pastikan kolom user_id ada di tabel orders Anda
+        }
+    }
+    
     if (id) dbRow.id = id;
 
     if (id) {
