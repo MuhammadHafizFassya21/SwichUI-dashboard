@@ -17,6 +17,10 @@ let projects = JSON.parse(localStorage.getItem('swichui_projects')) || [
     { id: 2, client: "Batik Rahmat", service: "Instagram Feed", priority: "Medium", revisions: 2, status: "Sketsa", value: 2000000, dp: 500000, deadline: "2024-05-10", contact: "+62 812-9876-5432" }
 ];
 
+// --- SESSION SECURITY CONFIG ---
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 Menit (dalam milidetik)
+let logoutTimer;
+
 const statusProgressMap = {
     "Briefing": 20,
     "Sketsa": 40,
@@ -39,6 +43,7 @@ async function checkAuth() {
             showDashboard();
             await fetchProjectsFromSupabase();
             initApp();
+            startSessionTimer(); // Mulai timer keamanan
         } else {
             showLogin();
         }
@@ -106,6 +111,7 @@ function setupAuthListeners() {
                     showDashboard();
                     await fetchProjectsFromSupabase();
                     initApp();
+                    startSessionTimer(); // Mulai timer keamanan
                 }
             } catch (err) {
                 errorDiv.innerText = 'Koneksi error: ' + err.message;
@@ -138,6 +144,35 @@ async function fetchProjectsFromSupabase() {
             contact: row.kontak_wa || "-"
         }));
     }
+}
+
+// --- SECURITY LOGIC ---
+function startSessionTimer() {
+    resetLogoutTimer();
+    // Listen for any user activity to reset the timer
+    ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(name => {
+        document.addEventListener(name, resetLogoutTimer, true);
+    });
+}
+
+function resetLogoutTimer() {
+    if (document.getElementById('app-container').style.display === 'none') return;
+    clearTimeout(logoutTimer);
+    logoutTimer = setTimeout(handleLogout, SESSION_TIMEOUT);
+}
+
+async function handleLogout() {
+    if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+    }
+    // Reset state and UI
+    showLogin();
+    showToast('Sesi berakhir demi keamanan. Silakan login kembali.', 'warning');
+    
+    // Stop listening for activity
+    ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(name => {
+        document.removeEventListener(name, resetLogoutTimer, true);
+    });
 }
 
 function initApp() {
