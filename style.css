@@ -23,18 +23,30 @@
     box-sizing: border-box;
 }
 
+html, body {
+    height: 100%;
+}
+
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-main);
-    display: flex;
     min-height: 100vh;
     overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+#app-container {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
 }
 
 /* Sidebar */
 aside {
     width: 260px;
+    min-width: 260px;
     background-color: var(--sidebar-bg);
     border-right: 1px solid var(--border-color);
     padding: 2rem;
@@ -42,7 +54,10 @@ aside {
     flex-direction: column;
     gap: 2rem;
     position: fixed;
+    top: 0;
+    left: 0;
     height: 100vh;
+    z-index: 100;
 }
 
 .logo {
@@ -101,7 +116,9 @@ main {
     margin-left: 260px;
     flex: 1;
     padding: 2.5rem;
+    width: calc(100vw - 260px);
     max-width: calc(100vw - 260px);
+    min-height: 100vh;
 }
 
 header {
@@ -142,6 +159,7 @@ header {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
     gap: 1.5rem;
+    width: 100%;
 }
 
 .card {
@@ -150,6 +168,8 @@ header {
     border-radius: 1rem;
     padding: 1.5rem;
     transition: transform 0.3s ease, border-color 0.3s ease;
+    width: 100%;
+    min-width: 0;
 }
 
 .card:hover {

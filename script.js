@@ -51,7 +51,7 @@ async function checkAuth() {
 
 function showDashboard() {
     document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-container').style.display = 'block';
+    document.getElementById('app-container').style.display = 'flex';
 }
 
 function showLogin() {
@@ -120,7 +120,7 @@ function setupAuthListeners() {
 
 async function fetchProjectsFromSupabase() {
     if (!supabaseClient) return;
-    
+
     const { data, error } = await supabaseClient.from('orders').select('*');
     if (error) {
         console.error('Error fetching data from Supabase:', error);
@@ -374,12 +374,13 @@ async function saveAndRefresh(syncToSupabase = true) {
     if (supabaseClient && syncToSupabase) {
         // Fallback mass sync if needed, though we handle it per-action now
     }
-    
+
     localStorage.setItem('swichui_projects', JSON.stringify(projects));
     renderSalesTable();
     renderClientTable();
     updateOverview();
     renderProductionStatus();
+    renderFinancialChart();
 }
 
 // --- UI HELPERS ---
@@ -459,11 +460,69 @@ function renderFinancialChart() {
     const container = document.getElementById('financialChart');
     if (!container) return;
     container.innerHTML = '';
-    const mockFinance = [{ g: 5000000, n: 3500000 }, { g: 8000000, n: 6000000 }, { g: 4500000, n: 3000000 }, { g: 10000000, n: 7500000 }];
-    mockFinance.forEach(d => {
+
+    // Grouping logic: Get data for the last 4 months
+    const monthlyData = {};
+    const now = new Date();
+
+    // Pre-fill last 4 months to ensure chart isn't empty and stays consistent
+    for (let i = 3; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = d.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
+        monthlyData[key] = { gross: 0, net: 0, label: key };
+    }
+
+    // Populate with real project data
+    projects.forEach(p => {
+        const d = new Date(p.deadline);
+        if (isNaN(d)) return;
+        const key = d.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
+
+        // Only count if it matches one of our displayed months
+        if (monthlyData[key]) {
+            monthlyData[key].gross += (p.value || 0);
+            // Net logic: 70% margin (consistent with updateOverview)
+            monthlyData[key].net += ((p.value || 0) * 0.7);
+        }
+    });
+
+    const dataPoints = Object.values(monthlyData);
+    const maxVal = Math.max(...dataPoints.map(m => m.gross), 1000000); // Scale relative to max gross, min 1M
+
+    dataPoints.forEach(d => {
         const group = document.createElement('div');
-        group.style.flex = "1"; group.style.display = "flex"; group.style.alignItems = "flex-end"; group.style.gap = "4px"; group.style.height = "100%";
-        group.innerHTML = `<div class="bar" style="height: ${(d.g / 10000000) * 100}%"></div><div class="bar bar-profit" style="height: ${(d.n / 10000000) * 100}%"></div>`;
+        group.className = 'chart-group';
+        group.style.flex = "1";
+        group.style.display = "flex";
+        group.style.flexDirection = "column";
+        group.style.alignItems = "center";
+        group.style.height = "100%";
+        group.style.justifyContent = "flex-end";
+
+        const barsContainer = document.createElement('div');
+        barsContainer.style.display = "flex";
+        barsContainer.style.alignItems = "flex-end";
+        barsContainer.style.gap = "4px";
+        barsContainer.style.height = "140px"; // Leave space for label
+        barsContainer.style.width = "100%";
+        barsContainer.style.justifyContent = "center";
+
+        const grossHeight = (d.gross / maxVal) * 100;
+        const netHeight = (d.net / maxVal) * 100;
+
+        barsContainer.innerHTML = `
+            <div class="bar" style="height: ${grossHeight}%; width: 20px;" title="${d.label} Gross: Rp ${d.gross.toLocaleString('id-ID')}"></div>
+            <div class="bar bar-profit" style="height: ${netHeight}%; width: 20px;" title="${d.label} Net: Rp ${d.net.toLocaleString('id-ID')}"></div>
+        `;
+
+        const label = document.createElement('div');
+        label.style.fontSize = "0.65rem";
+        label.style.color = "var(--text-muted)";
+        label.style.marginTop = "8px";
+        label.innerText = d.label.split(' ')[0]; // Show only month name
+
+        group.appendChild(barsContainer);
+        group.appendChild(label);
         container.appendChild(group);
     });
 }
