@@ -222,13 +222,21 @@
             </div>
             <form id="projectForm">
                 <input type="hidden" id="projectId">
-                <div class="form-group">
-                    <label>Client Name</label>
-                    <input type="text" id="clientName" required placeholder="UMKM Name">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nama Lengkap</label>
+                        <input type="text" id="clientName" required placeholder="Masukkan nama Anda">
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Brand/Usaha</label>
+                        <input type="text" id="namaBrand" placeholder="Contoh: Kopi Senja">
+                    </div>
                 </div>
-                <div class="form-group" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
-                    <div>
-                        <label>Service</label>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Layanan</label>
                         <select id="serviceType">
                             <option value="Poster Single">Poster Single</option>
                             <option value="Feed IG Single">Feed IG Single</option>
@@ -237,31 +245,77 @@
                             <option value="Logo Design">Logo Design</option>
                             <option value="UI/UX Design">UI/UX Design</option>
                             <option value="Banner">Banner</option>
+                            <option value="Lainnya">Lainnya</option>
                         </select>
                     </div>
-                    <div>
+                    <div class="form-group">
+                        <label>Deadline</label>
+                        <input type="text" id="projectDeadline" placeholder="Contoh: 3 Hari / 1 Minggu">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>WhatsApp</label>
+                        <input type="text" id="kontakWA" placeholder="Contoh: 082249634912">
+                    </div>
+                    <div class="form-group">
+                        <label>Target Audiens</label>
+                        <input type="text" id="targetAudiens" placeholder="Contoh: Remaja, Pekerja, dll">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Brief / Kebutuhan Desain</label>
+                    <textarea id="briefDesain" rows="4" placeholder="Ceritakan detail kebutuhan desain Anda..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Referensi Desain</label>
+                        <input type="text" id="referensiDesain" placeholder="Link (Pinterest/Behance) atau deskripsi">
+                    </div>
+                    <div class="form-group">
+                        <label>File/Asset (Jika Ada)</label>
+                        <input type="text" id="fileAsset" placeholder="Link Google Drive/Dropbox">
+                    </div>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid var(--border-color); margin: 1rem 0;">
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; font-weight: 600;">Internal Management</p>
+
+                <div class="form-row">
+                    <div class="form-group">
                         <label>Priority</label>
                         <select id="priorityLevel">
                             <option value="Low">Low</option>
-                            <option value="Medium">Medium</option>
+                            <option value="Medium" selected>Medium</option>
                             <option value="Urgent">Urgent</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="projectStatus">
+                            <option value="Briefing">Briefing</option>
+                            <option value="Sketsa">Sketsa</option>
+                            <option value="Desain Final">Desain Final</option>
+                            <option value="Revisi">Revisi</option>
+                            <option value="Selesai">Selesai</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
-                    <div>
+
+                <div class="form-row">
+                    <div class="form-group">
                         <label>Total Contract (Rp)</label>
-                        <input type="number" id="totalValue" required>
+                        <input type="number" id="totalValue" required placeholder="0">
                     </div>
-                    <div>
+                    <div class="form-group">
                         <label>DP Paid (Rp)</label>
-                        <input type="number" id="dpPaid" value="0">
+                        <input type="number" id="dpPaid" value="0" placeholder="0">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Deadline</label>
-                    <input type="date" id="projectDeadline">
-                </div>
+
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn-add">Save Project</button>

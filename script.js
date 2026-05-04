@@ -134,14 +134,19 @@ async function fetchProjectsFromSupabase() {
         projects = data.map(row => ({
             id: row.id,
             client: row.nama_klien || "Unknown",
+            namaBrand: row.nama_brand || "-",
             service: row.jenis_layanan || "Lainnya",
             priority: row.priority || "Medium",
             revisions: row.revisions || 0,
             status: row.status || "Briefing",
             value: row.harga_total || 0,
             dp: row.dp || 0,
-            deadline: row.deadline || new Date().toISOString().split('T')[0],
-            contact: row.kontak_wa || "-"
+            deadline: row.deadline || "-",
+            contact: row.kontak_wa || "-",
+            targetAudiens: row.target_audiens || "-",
+            briefDesain: row.brief_desain || "",
+            referensiDesain: row.referensi_desain || "",
+            fileAsset: row.file_asset || ""
         }));
     }
 }
@@ -168,7 +173,7 @@ async function handleLogout() {
     // Reset state and UI
     showLogin();
     showToast('Sesi berakhir demi keamanan. Silakan login kembali.', 'warning');
-    
+
     // Stop listening for activity
     ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(name => {
         document.removeEventListener(name, resetLogoutTimer, true);
@@ -274,6 +279,7 @@ function renderSalesTable() {
         row.innerHTML = `
             <td>
                 <div style="font-weight:600">${proj.client}</div>
+                <div style="font-size:0.75rem; color:var(--accent-gold); font-weight:500;">${proj.namaBrand}</div>
                 <div style="font-size:0.7rem; color:var(--text-muted)">DL: ${proj.deadline} ${isOverdue ? '<span style="color:var(--danger)">!</span>' : ''}</div>
             </td>
             <td>${proj.service}</td>
@@ -332,26 +338,36 @@ async function handleFormSubmit(e) {
     const newProj = {
         id: tempId,
         client: document.getElementById('clientName').value,
+        namaBrand: document.getElementById('namaBrand').value,
         service: document.getElementById('serviceType').value,
-        priority: document.getElementById('priorityLevel').value,
-        value: parseInt(document.getElementById('totalValue').value),
-        dp: parseInt(document.getElementById('dpPaid').value) || 0,
         deadline: document.getElementById('projectDeadline').value,
-        revisions: id ? projects.find(p => p.id == id).revisions : 0,
-        status: id ? projects.find(p => p.id == id).status : "Briefing",
-        contact: id ? projects.find(p => p.id == id).contact : "0812xxxx"
+        contact: document.getElementById('kontakWA').value,
+        targetAudiens: document.getElementById('targetAudiens').value,
+        briefDesain: document.getElementById('briefDesain').value,
+        referensiDesain: document.getElementById('referensiDesain').value,
+        fileAsset: document.getElementById('fileAsset').value,
+        priority: document.getElementById('priorityLevel').value,
+        status: document.getElementById('projectStatus').value,
+        value: parseInt(document.getElementById('totalValue').value) || 0,
+        dp: parseInt(document.getElementById('dpPaid').value) || 0,
+        revisions: id ? projects.find(p => p.id == id).revisions : 0
     };
 
     const dbRow = {
         nama_klien: newProj.client,
+        nama_brand: newProj.namaBrand,
         jenis_layanan: newProj.service,
+        deadline: newProj.deadline,
+        kontak_wa: newProj.contact,
+        target_audiens: newProj.targetAudiens,
+        brief_desain: newProj.briefDesain,
+        referensi_desain: newProj.referensiDesain,
+        file_asset: newProj.fileAsset,
         priority: newProj.priority,
+        status: newProj.status,
         harga_total: newProj.value,
         dp: newProj.dp,
-        deadline: newProj.deadline,
-        revisions: newProj.revisions,
-        status: newProj.status,
-        kontak_wa: newProj.contact
+        revisions: newProj.revisions
     };
 
     if (supabaseClient) {
@@ -360,7 +376,7 @@ async function handleFormSubmit(e) {
             dbRow.user_id = user.id; // Pastikan kolom user_id ada di tabel orders Anda
         }
     }
-    
+
     if (id) dbRow.id = id;
 
     if (id) {
@@ -432,15 +448,22 @@ function openModal(id = null) {
     const title = document.getElementById('modalTitle');
     const form = document.getElementById('projectForm');
     if (id) {
-        const proj = projects.find(p => p.id === id);
+        const proj = projects.find(p => p.id == id);
         title.innerText = 'Edit Project';
         document.getElementById('projectId').value = proj.id;
         document.getElementById('clientName').value = proj.client;
+        document.getElementById('namaBrand').value = proj.namaBrand;
         document.getElementById('serviceType').value = proj.service;
+        document.getElementById('projectDeadline').value = proj.deadline;
+        document.getElementById('kontakWA').value = proj.contact;
+        document.getElementById('targetAudiens').value = proj.targetAudiens;
+        document.getElementById('briefDesain').value = proj.briefDesain;
+        document.getElementById('referensiDesain').value = proj.referensiDesain;
+        document.getElementById('fileAsset').value = proj.fileAsset;
         document.getElementById('priorityLevel').value = proj.priority;
+        document.getElementById('projectStatus').value = proj.status;
         document.getElementById('totalValue').value = proj.value;
         document.getElementById('dpPaid').value = proj.dp;
-        document.getElementById('projectDeadline').value = proj.deadline;
     } else {
         title.innerText = 'Add New Project';
         form.reset();
