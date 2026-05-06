@@ -29,6 +29,16 @@ const statusProgressMap = {
     "Selesai": 100
 };
 
+const servicePriceMap = {
+    "Feed IG Single": 35000,
+    "Poster Single": 50000,
+    "Banner Design": 75000,
+    "Logo Design": 150000,
+    "Carousel 3 Slide": 100000,
+    "Carousel 5 Slide": 150000,
+    "UI/UX Design": 450000
+};
+
 // Initialize Dashboard
 document.addEventListener('DOMContentLoaded', async () => {
     setupAuthListeners();
@@ -131,23 +141,39 @@ async function fetchProjectsFromSupabase() {
     if (error) {
         console.error('Error fetching data from Supabase:', error);
     } else if (data) {
-        projects = data.map(row => ({
-            id: row.id,
-            client: row.nama_klien || "Unknown",
-            namaBrand: row.nama_brand || "-",
-            service: row.jenis_layanan || "Lainnya",
-            priority: row.priority || "Medium",
-            revisions: row.revisions || 0,
-            status: row.status || "Briefing",
-            value: row.harga_total || 0,
-            dp: row.dp || 0,
-            deadline: row.deadline || "-",
-            contact: row.kontak_wa || "-",
-            targetAudiens: row.target_audiens || "-",
-            briefDesain: row.brief_desain || "",
-            referensiDesain: row.referensi_desain || "",
-            fileAsset: row.file_asset || ""
-        }));
+        projects = data.map(row => {
+            const service = row.jenis_layanan || row.layanan || "Lainnya";
+            let value = row.harga_total || row.total_harga || row.value || 0;
+            
+            // Auto-fill price if it comes in as 0 from website
+            if (value === 0 && servicePriceMap[service]) {
+                value = servicePriceMap[service];
+            }
+
+            // Smart mapping for brief and other details
+            const getField = (keywords, defaultValue = "") => {
+                const key = Object.keys(row).find(k => keywords.some(kw => k.toLowerCase().includes(kw)));
+                return (key && row[key]) ? row[key] : defaultValue;
+            };
+
+            return {
+                id: row.id,
+                client: row.nama_klien || row.nama || "Unknown",
+                namaBrand: row.nama_brand || row.brand || "-",
+                service: service,
+                priority: row.priority || "Medium",
+                revisions: row.revisions || 0,
+                status: row.status || "Briefing",
+                value: value,
+                dp: row.dp || row.uang_muka || 0,
+                deadline: row.deadline || row.tenggat_waktu || "-",
+                contact: row.kontak_wa || row.whatsapp || row.contact || "-",
+                targetAudiens: getField(['audiens', 'target'], "-"),
+                briefDesain: getField(['brief', 'pesan', 'kebutuhan', 'deskripsi'], ""),
+                referensiDesain: getField(['referensi', 'reference'], ""),
+                fileAsset: getField(['asset', 'file', 'drive'], "")
+            };
+        });
     }
 }
 
@@ -188,15 +214,55 @@ function initApp() {
     renderFinancialChart();
     renderLeadSources();
     renderClientTable();
+    renderRecentClients();
     setupEventListeners();
+    
+    // Real-time listener for orders table (if using Supabase)
+    if (supabaseClient) {
+        supabaseClient
+            .channel('public:orders')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+                fetchProjectsFromSupabase().then(() => {
+                    renderSalesTable();
+                    updateOverview();
+                    renderProductionStatus();
+                    renderFinancialChart();
+                    renderClientTable();
+                    renderRecentClients();
+                    showToast('Data diperbarui dari server...', 'success');
+                });
+            })
+            .subscribe();
+    }
 }
 
 function setupEventListeners() {
     document.getElementById('btnAddProject').addEventListener('click', () => openModal());
+    document.getElementById('btnExport').addEventListener('click', () => exportToCSV());
     document.getElementById('projectForm').addEventListener('submit', (e) => {
-        // Call the async handler without returning a promise to the event listener
         handleFormSubmit(e);
     });
+
+    // Auto-price logic
+    document.getElementById('serviceType').addEventListener('change', (e) => {
+        const service = e.target.value;
+        const priceInput = document.getElementById('totalValue');
+        const id = document.getElementById('projectId').value;
+        
+        // Only auto-fill price if it's a new project or current price is 0
+        if (servicePriceMap[service] && (!id || parseInt(priceInput.value) === 0)) {
+            priceInput.value = servicePriceMap[service];
+            showToast(`Harga otomatis disesuaikan untuk ${service}`, 'success');
+        }
+    });
+
+    // Search logic
+    const searchInput = document.getElementById('projectSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            renderSalesTable();
+        });
+    }
 }
 
 // --- NAVIGATION LOGIC ---
@@ -215,8 +281,20 @@ function setupNavigation() {
             views.forEach(v => v.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
             const viewName = item.innerText;
-            viewTitle.innerText = viewName === 'Dashboard' ? 'Dashboard Overview' : `${viewName} Management`;
-            viewSubtitle.innerText = `Viewing your ${viewName.toLowerCase()} data and statistics.`;
+            const viewTitleText = viewName === 'Dashboard' ? 'Ringkasan Dashboard' : 
+                                viewName === 'Proyek' ? 'Manajemen Proyek' :
+                                viewName === 'Keuangan' ? 'Manajemen Keuangan' : 'Database Klien';
+            
+            viewTitle.innerText = viewTitleText;
+            viewSubtitle.innerText = `Melihat data dan statistik ${viewName.toLowerCase()} Anda.`;
+            
+            // Show Export button only on specific views
+            const exportBtn = document.getElementById('btnExport');
+            if (['nav-projects', 'nav-clients', 'nav-finances'].includes(item.id)) {
+                exportBtn.style.display = 'block';
+            } else {
+                exportBtn.style.display = 'none';
+            }
         });
     });
 }
@@ -258,25 +336,43 @@ document.getElementById('confirmBtn').addEventListener('click', () => {
 
 // --- CRUD LOGIC ---
 function renderSalesTable() {
-    const tableBody = document.getElementById('salesTableBody');
-    if (!tableBody) return;
-    tableBody.innerHTML = '';
+    const activeTableBody = document.getElementById('salesTableBody');
+    const archiveTableBody = document.getElementById('archiveTableBody');
+    const searchQuery = document.getElementById('projectSearch')?.value.toLowerCase() || '';
+    
+    if (!activeTableBody || !archiveTableBody) return;
+    
+    activeTableBody.innerHTML = '';
+    archiveTableBody.innerHTML = '';
 
-    const sortedProjects = [...projects].sort((a, b) => {
+    // Filter and Sort
+    const filteredProjects = projects.filter(p => {
+        const idStr = String(p.id).toLowerCase();
+        const clientStr = p.client.toLowerCase();
+        const brandStr = p.namaBrand.toLowerCase();
+        return idStr.includes(searchQuery) || clientStr.includes(searchQuery) || brandStr.includes(searchQuery);
+    });
+
+    const sortedProjects = [...filteredProjects].sort((a, b) => {
         const pOrder = { "Urgent": 0, "Medium": 1, "Low": 2 };
         if (pOrder[a.priority] !== pOrder[b.priority]) return pOrder[a.priority] - pOrder[b.priority];
         return new Date(a.deadline) - new Date(b.deadline);
     });
 
     sortedProjects.forEach(proj => {
-        const remaining = proj.value - proj.dp;
+        const remaining = proj.dp > 0 ? proj.value - proj.dp : 0;
         const isOverdue = new Date(proj.deadline) < new Date() && proj.status !== 'Selesai';
         const row = document.createElement('tr');
+        
         if (proj.status === 'Selesai') row.classList.add('status-lunas');
         else if (proj.status === 'Revisi' || proj.revisions > 3) row.classList.add('status-revisi');
         if (isOverdue) row.classList.add('status-overdue');
 
+        // Short ID for display if it's a long UUID
+        const displayId = typeof proj.id === 'string' && proj.id.length > 8 ? proj.id.substring(0, 8) + '...' : proj.id;
+
         row.innerHTML = `
+            <td style="font-size: 0.7rem; font-family: monospace; color: var(--text-muted);" title="${proj.id}">${displayId}</td>
             <td>
                 <div style="font-weight:600">${proj.client}</div>
                 <div style="font-size:0.75rem; color:var(--accent-gold); font-weight:500;">${proj.namaBrand}</div>
@@ -296,8 +392,9 @@ function renderSalesTable() {
                 </div>
             </td>
             <td>Rp ${proj.value.toLocaleString('id-ID')}</td>
-            <td style="color: ${remaining > 0 ? 'var(--warning)' : 'var(--success)'}">
-                ${remaining > 0 ? `Rp ${remaining.toLocaleString('id-ID')}` : 'LUNAS'}
+            <td style="color: var(--primary-blue)">Rp ${proj.dp.toLocaleString('id-ID')}</td>
+            <td style="color: ${proj.status === 'Selesai' || (proj.dp > 0 && remaining <= 0) ? 'var(--success)' : (proj.dp === 0 ? 'var(--text-muted)' : 'var(--warning)')}">
+                ${proj.status === 'Selesai' || (proj.dp > 0 && remaining <= 0) ? 'LUNAS' : `Rp ${remaining.toLocaleString('id-ID')}`}
             </td>
             <td>
                 <div style="display:flex; gap:0.5rem;">
@@ -307,7 +404,12 @@ function renderSalesTable() {
                 </div>
             </td>
         `;
-        tableBody.appendChild(row);
+
+        if (proj.status === 'Selesai') {
+            archiveTableBody.appendChild(row);
+        } else {
+            activeTableBody.appendChild(row);
+        }
     });
 }
 
@@ -405,12 +507,23 @@ async function updateStatus(id, newStatus) {
     const proj = projects.find(p => p.id === id);
     if (proj) {
         proj.status = newStatus;
+        
+        // Logic: If status is 'Selesai', automatically set as LUNAS (dp = value)
+        let updateData = { status: newStatus };
+        if (newStatus === 'Selesai') {
+            proj.dp = proj.value;
+            updateData.dp = proj.value;
+            showToast(`Proyek ${proj.client} ditandai selesai & lunas otomatis.`, 'success');
+        }
+
         if (supabaseClient) {
-            const { error } = await supabaseClient.from('orders').update({ status: newStatus }).eq('id', id);
+            const { error } = await supabaseClient.from('orders').update(updateData).eq('id', id);
             if (error) showToast('Gagal update status di Supabase: ' + error.message, 'error');
         }
         saveAndRefresh(false);
-        showToast(`Status ${proj.client} diperbarui ke ${newStatus}`);
+        if (newStatus !== 'Selesai') {
+            showToast(`Status ${proj.client} diperbarui ke ${newStatus}`);
+        }
     }
 }
 
@@ -437,6 +550,7 @@ async function saveAndRefresh(syncToSupabase = true) {
     localStorage.setItem('swichui_projects', JSON.stringify(projects));
     renderSalesTable();
     renderClientTable();
+    renderRecentClients();
     updateOverview();
     renderProductionStatus();
     renderFinancialChart();
@@ -449,7 +563,7 @@ function openModal(id = null) {
     const form = document.getElementById('projectForm');
     if (id) {
         const proj = projects.find(p => p.id == id);
-        title.innerText = 'Edit Project';
+        title.innerText = 'Edit Proyek';
         document.getElementById('projectId').value = proj.id;
         document.getElementById('clientName').value = proj.client;
         document.getElementById('namaBrand').value = proj.namaBrand;
@@ -464,10 +578,26 @@ function openModal(id = null) {
         document.getElementById('projectStatus').value = proj.status;
         document.getElementById('totalValue').value = proj.value;
         document.getElementById('dpPaid').value = proj.dp;
+
+        // Logic: Lock price/dp if status is "Selesai"
+        const isFinished = proj.status === 'Selesai';
+        document.getElementById('totalValue').readOnly = isFinished;
+        document.getElementById('dpPaid').readOnly = isFinished;
+        if (isFinished) {
+            document.getElementById('totalValue').style.opacity = '0.6';
+            document.getElementById('dpPaid').style.opacity = '0.6';
+        } else {
+            document.getElementById('totalValue').style.opacity = '1';
+            document.getElementById('dpPaid').style.opacity = '1';
+        }
     } else {
-        title.innerText = 'Add New Project';
+        title.innerText = 'Tambah Proyek Baru';
         form.reset();
         document.getElementById('projectId').value = '';
+        document.getElementById('totalValue').readOnly = false;
+        document.getElementById('dpPaid').readOnly = false;
+        document.getElementById('totalValue').style.opacity = '1';
+        document.getElementById('dpPaid').style.opacity = '1';
     }
     modal.style.display = 'flex';
 }
@@ -508,18 +638,73 @@ function renderClientTable() {
     const tableBody = document.getElementById('clientTableBody');
     if (!tableBody) return;
     tableBody.innerHTML = '';
+    
+    // Group projects by client name and get the latest project for each
     const clientMap = {};
     projects.forEach(p => {
-        if (!clientMap[p.client]) clientMap[p.client] = { name: p.client, whatsapp: p.contact || "N/A", projects: 0, lastProject: p.deadline };
-        clientMap[p.client].projects++;
-        if (new Date(p.deadline) > new Date(clientMap[p.client].lastProject)) clientMap[p.client].lastProject = p.deadline;
+        if (!clientMap[p.client] || new Date(p.deadline) > new Date(clientMap[p.client].deadline)) {
+            clientMap[p.client] = p;
+        }
     });
+
     Object.values(clientMap).forEach(client => {
         const row = document.createElement('tr');
-        row.innerHTML = `<td>${client.name}</td><td>${client.whatsapp}</td><td>${client.projects}</td><td>${client.lastProject}</td>
-            <td><button class="btn-small" onclick="showToast('Fitur chat ke ${client.name} sedang dikembangkan', 'warning')">💬</button></td>`;
+        row.innerHTML = `
+            <td><div style="font-weight:600">${client.client}</div></td>
+            <td>${client.namaBrand || '-'}</td>
+            <td>${client.service}</td>
+            <td>${client.contact}</td>
+            <td><span class="badge ${new Date(client.deadline) < new Date() ? 'priority-urgent' : ''}">${client.deadline}</span></td>
+            <td>
+                <button class="btn-small" onclick="viewClientDetail('${client.id}')" title="View Full Brief">📄 Info</button>
+            </td>
+        `;
         tableBody.appendChild(row);
     });
+}
+
+function viewClientDetail(projectId) {
+    const proj = projects.find(p => p.id == projectId);
+    if (!proj) return;
+
+    const body = document.getElementById('clientDetailBody');
+    body.innerHTML = `
+        <div class="detail-grid">
+            <div class="detail-item">
+                <label>Nama Brand / Usaha</label>
+                <p>${proj.namaBrand || '-'}</p>
+            </div>
+            <div class="detail-item">
+                <label>Layanan</label>
+                <p>${proj.service}</p>
+            </div>
+            <div class="detail-item">
+                <label>Deadline</label>
+                <p>${proj.deadline}</p>
+            </div>
+            <div class="detail-item" style="grid-column: span 2;">
+                <label>Target Audiens</label>
+                <p>${proj.targetAudiens || '-'}</p>
+            </div>
+            <div class="detail-item" style="grid-column: span 2;">
+                <label>Brief / Kebutuhan Desain</label>
+                <div class="brief-box">${proj.briefDesain || 'Tidak ada detail brief.'}</div>
+            </div>
+            <div class="detail-item" style="grid-column: span 2;">
+                <label>Referensi Desain</label>
+                <p>${proj.referensiDesain ? `<a href="${proj.referensiDesain}" target="_blank" class="link-gold">Buka Referensi 🔗</a>` : '-'}</p>
+            </div>
+            <div class="detail-item" style="grid-column: span 2;">
+                <label>File / Asset</label>
+                <p>${proj.fileAsset ? `<a href="${proj.fileAsset}" target="_blank" class="link-gold">Buka File Asset 📂</a>` : '-'}</p>
+            </div>
+        </div>
+    `;
+    document.getElementById('clientDetailModal').style.display = 'flex';
+}
+
+function closeClientModal() {
+    document.getElementById('clientDetailModal').style.display = 'none';
 }
 
 function renderFinancialChart() {
@@ -625,4 +810,67 @@ function generateInvoice(projectId) {
         printWindow.print();
         template.style.display = 'none';
     }, 500);
+}
+
+function exportToCSV() {
+    if (projects.length === 0) {
+        showToast('Tidak ada data untuk diekspor', 'warning');
+        return;
+    }
+
+    const headers = ['ID', 'Klien', 'Brand', 'Layanan', 'Prioritas', 'Status', 'Revisi', 'Total Kontrak', 'DP', 'Sisa Tagihan', 'Deadline', 'Kontak'];
+    const rows = projects.map(p => [
+        p.id,
+        `"${p.client}"`,
+        `"${p.namaBrand}"`,
+        `"${p.service}"`,
+        p.priority,
+        p.status,
+        p.revisions,
+        p.value,
+        p.dp,
+        (p.value - p.dp),
+        p.deadline,
+        `'${p.contact}` // Prefix with ' to prevent Excel from formatting as number
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+        + headers.join(",") + "\n" 
+        + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    const date = new Date().toISOString().split('T')[0];
+    link.setAttribute("download", `SwichUI_Laporan_Proyek_${date}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast('Data berhasil diekspor ke CSV/Excel', 'success');
+}
+
+function renderRecentClients() {
+    const container = document.getElementById('recentClientsList');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Sort by "latest" - since we don't have a reliable 'created_at' date here, 
+    // we'll assume the last items in the projects array (or latest deadline) are the newest.
+    // Ideally, we'd sort by a real timestamp if available.
+    const recent = [...projects].slice(-3).reverse(); 
+
+    recent.forEach(proj => {
+        const initials = proj.client.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+        const item = document.createElement('div');
+        item.className = 'client-mini';
+        item.innerHTML = `
+            <div class="client-avatar">${initials}</div>
+            <div class="client-info">
+                <h4>${proj.client}</h4>
+                <p>${proj.contact}</p>
+            </div>
+        `;
+        container.appendChild(item);
+    });
 }

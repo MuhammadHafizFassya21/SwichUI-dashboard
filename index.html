@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+
 <body>
     <!-- LOGIN SCREEN -->
     <div id="login-screen" class="login-container">
@@ -26,7 +28,8 @@
                 </div>
                 <button type="button" class="btn-login" id="btnLogin">Login</button>
             </form>
-            <div id="loginError" class="login-error" style="display: none; color: var(--danger); margin-top: 1rem; font-size: 0.875rem;"></div>
+            <div id="loginError" class="login-error"
+                style="display: none; color: var(--danger); margin-top: 1rem; font-size: 0.875rem;"></div>
         </div>
     </div>
 
@@ -37,179 +40,214 @@
                 Swich<span>UI</span>
             </div>
             <nav class="nav-menu">
-            <a href="#" class="nav-item active" id="nav-dashboard">Dashboard</a>
-            <a href="#" class="nav-item" id="nav-projects">Projects</a>
-            <a href="#" class="nav-item" id="nav-finances">Finances</a>
-            <a href="#" class="nav-item" id="nav-clients">Clients</a>
-        </nav>
+                <a href="#" class="nav-item active" id="nav-dashboard">Dashboard</a>
+                <a href="#" class="nav-item" id="nav-projects">Proyek</a>
+                <a href="#" class="nav-item" id="nav-finances">Keuangan</a>
+                <a href="#" class="nav-item" id="nav-clients">Klien</a>
+            </nav>
 
-        <div class="crm-section">
-            <div class="crm-title">Recent Clients</div>
-            <div class="client-mini">
-                <div class="client-avatar">UK</div>
-                <div class="client-info">
-                    <h4>UMKM Kopi A</h4>
-                    <p>+62 812-3456-7890</p>
+            <div class="crm-section">
+                <div class="crm-title">Klien Terbaru</div>
+                <div id="recentClientsList">
+                    <!-- Dynamic client items will be injected here -->
                 </div>
             </div>
-            <div class="client-mini">
-                <div class="client-avatar">BR</div>
-                <div class="client-info">
-                    <h4>Batik Rahmat</h4>
-                    <p>+62 812-9876-5432</p>
-                </div>
-            </div>
-        </div>
-    </aside>
+        </aside>
 
-    <main>
-        <header>
-            <div class="header-content">
-                <h1 id="view-title">Dashboard Overview</h1>
-                <p id="view-subtitle">Welcome back, SwichUI. Here's what's happening today.</p>
-            </div>
-            <button class="btn-add" id="btnAddProject">+ Add Project</button>
-        </header>
+        <main>
+            <header>
+                <div class="header-content">
+                    <h1 id="view-title">Ringkasan Dashboard</h1>
+                    <p id="view-subtitle">Selamat datang kembali, SwichUI. Berikut adalah update hari ini.</p>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-secondary" id="btnExport"
+                        style="display:none; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; transition: all 0.3s ease;">
+                        📥 Ekspor Data
+                    </button>
+                    <button class="btn-add" id="btnAddProject">+ Tambah Proyek</button>
+                </div>
+            </header>
 
-        <!-- DASHBOARD VIEW -->
-        <section id="view-dashboard" class="content-view active">
-            <div class="dashboard-grid">
-                <!-- Header Stats -->
-                <div class="card stat-card">
-                    <div class="card-title">Total Revenue (Month)</div>
-                    <div class="stat-value"><span>Rp</span>0</div>
-                    <div class="stat-label">+12% from last month</div>
-                </div>
-                <div class="card stat-card">
-                    <div class="card-title">Active Projects</div>
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">3 near deadline</div>
-                </div>
-                <div class="card stat-card">
-                    <div class="card-title">Net Profit</div>
-                    <div class="stat-value"><span>Rp</span>0</div>
-                    <div class="stat-label">74% Profit Margin</div>
-                </div>
+            <!-- DASHBOARD VIEW -->
+            <section id="view-dashboard" class="content-view active">
+                <div class="dashboard-grid">
+                    <!-- Header Stats -->
+                    <div class="card stat-card">
+                        <div class="card-title">Total Omzet (Bulan)</div>
+                        <div class="stat-value"><span>Rp</span>0</div>
+                        <div class="stat-label">+12% dari bulan lalu</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="card-title">Proyek Aktif</div>
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">3 mendekati deadline</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="card-title">Laba Bersih</div>
+                        <div class="stat-value"><span>Rp</span>0</div>
+                        <div class="stat-label">74% Margin Keuntungan</div>
+                    </div>
 
-                <!-- Production Status -->
-                <div class="card progress-container">
-                    <div class="card-title">Production Status</div>
-                    <div id="productionStatus">
-                        <!-- Progress bars injected via JS -->
+                    <!-- Production Status -->
+                    <div class="card progress-container">
+                        <div class="card-title">Status Produksi</div>
+                        <div id="productionStatus">
+                            <!-- Progress bars injected via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Financial Health -->
+                    <div class="card chart-container">
+                        <div class="card-title">Kesehatan Keuangan (Kotor vs Bersih)</div>
+                        <div class="simple-bar-chart" id="financialChart">
+                            <!-- Bars injected via JS -->
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <!-- Financial Health -->
-                <div class="card chart-container">
-                    <div class="card-title">Financial Health (Gross vs Net)</div>
-                    <div class="simple-bar-chart" id="financialChart">
-                        <!-- Bars injected via JS -->
+            <!-- PROJECTS VIEW -->
+            <section id="view-projects" class="content-view">
+                <div class="card table-container">
+                    <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            Pelacakan Proyek Aktif
+                            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Proyek yang sedang berjalan</span>
+                        </div>
+                        <div class="search-box">
+                            <input type="text" id="projectSearch" placeholder="Cari Nama, ID, atau Brand..." 
+                                style="background: var(--bg-dark); border: 1px solid var(--border-color); color: white; padding: 0.5rem 1rem; border-radius: 8px; width: 300px; font-size: 0.875rem;">
+                        </div>
+                    </div>
+                    <table id="salesTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nama Klien</th>
+                                <th>Layanan</th>
+                                <th>Status</th>
+                                <th>Revisi</th>
+                                <th>Total Kontrak</th>
+                                <th>DP Masuk</th>
+                                <th>Sisa Tagihan</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesTableBody">
+                            <!-- Data injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card table-container" style="margin-top: 2rem; border-top: 2px solid var(--success);">
+                    <div class="card-title">
+                        Arsip Proyek Selesai
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Riwayat proyek yang telah rampung</span>
+                    </div>
+                    <table id="archiveTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nama Klien</th>
+                                <th>Layanan</th>
+                                <th>Status</th>
+                                <th>Revisi</th>
+                                <th>Total Kontrak</th>
+                                <th>DP Masuk</th>
+                                <th>Sisa Tagihan</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="archiveTableBody">
+                            <!-- Data injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- FINANCES VIEW -->
+            <section id="view-finances" class="content-view">
+                <div class="dashboard-grid">
+                    <div class="card stat-card" style="grid-column: span 6;">
+                        <div class="card-title">Analisis Keuangan Detail</div>
+                        <div class="stat-value">Segera Hadir</div>
+                        <p style="color:var(--text-muted); font-size:0.8rem;">Fitur untuk melacak langganan software
+                            dan biaya iklan sedang dikembangkan.</p>
+                    </div>
+                    <div class="card stat-card" style="grid-column: span 6;">
+                        <div class="card-title">Arus Kas (Cash Flow)</div>
+                        <div class="stat-value">Segera Hadir</div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- PROJECTS VIEW -->
-        <section id="view-projects" class="content-view">
-            <div class="card table-container">
-                <div class="card-title">
-                    Sales & Project Tracking
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">Manage all projects here</span>
+            <!-- CLIENTS VIEW -->
+            <section id="view-clients" class="content-view">
+                <div class="card table-container">
+                    <div class="card-title">Database Klien & Brief Proyek</div>
+                    <table id="clientTable">
+                        <thead>
+                            <tr>
+                                <th>Nama Klien</th>
+                                <th>Brand/Usaha</th>
+                                <th>Layanan</th>
+                                <th>WhatsApp</th>
+                                <th>Deadline</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientTableBody">
+                            <!-- Data injected via JS -->
+                        </tbody>
+                    </table>
                 </div>
-                <table id="salesTable">
-                    <thead>
-                        <tr>
-                            <th>Client Name</th>
-                            <th>Service</th>
-                            <th>Status</th>
-                            <th>Revisions</th>
-                            <th>Total Value</th>
-                            <th>Remaining</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="salesTableBody">
-                        <!-- Data injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- FINANCES VIEW -->
-        <section id="view-finances" class="content-view">
-            <div class="dashboard-grid">
-                <div class="card stat-card" style="grid-column: span 6;">
-                    <div class="card-title">Detailed Financial Analysis</div>
-                    <div class="stat-value">Coming Soon</div>
-                    <p style="color:var(--text-muted); font-size:0.8rem;">Feature to track software subscriptions and advertising costs is in development.</p>
-                </div>
-                <div class="card stat-card" style="grid-column: span 6;">
-                    <div class="card-title">Cash Flow</div>
-                    <div class="stat-value">Coming Soon</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- CLIENTS VIEW -->
-        <section id="view-clients" class="content-view">
-            <div class="card table-container">
-                <div class="card-title">Client Database</div>
-                <table id="clientTable">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>WhatsApp</th>
-                            <th>Total Projects</th>
-                            <th>Last Project</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="clientTableBody">
-                        <!-- Data injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </main>
+            </section>
+        </main>
     </div> <!-- End app-container -->
 
     <!-- Invoice Template (Hidden) -->
-    <div id="invoiceTemplate" style="display: none; background: white; color: black; padding: 40px; width: 800px; font-family: sans-serif;">
-        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #D4AF37; padding-bottom: 20px; margin-bottom: 20px;">
+    <div id="invoiceTemplate"
+        style="display: none; background: white; color: black; padding: 40px; width: 800px; font-family: sans-serif;">
+        <div
+            style="display: flex; justify-content: space-between; border-bottom: 2px solid #D4AF37; padding-bottom: 20px; margin-bottom: 20px;">
             <div>
-                <h1 style="margin: 0; color: #020617;">INVOICE</h1>
+                <h1 style="margin: 0; color: #020617;">TAGIHAN (INVOICE)</h1>
                 <p style="margin: 5px 0; color: #64748B;">SwichUI Digital Agency</p>
             </div>
             <div style="text-align: right;">
-                <p id="invId" style="font-weight: bold; margin: 0;">#INV-2024-001</p>
-                <p id="invDate" style="margin: 5px 0;">Date: April 29, 2026</p>
+                <h3 id="invId" style="margin: 0; color: #D4AF37;"></h3>
+                <p style="margin: 5px 0; color: #64748B;">Tanggal: ${new Date().toLocaleDateString('id-ID')}</p>
             </div>
         </div>
         <div style="margin-bottom: 30px;">
-            <p style="font-weight: bold; margin-bottom: 10px;">Bill To:</p>
-            <p id="invClientName" style="margin: 0; font-size: 1.2rem;"></p>
-            <p id="invClientContact" style="margin: 5px 0; color: #64748B;"></p>
+            <p style="margin: 0; color: #64748B; text-transform: uppercase; font-size: 0.8rem; font-weight: bold;">Ditujukan Ke:</p>
+            <h3 id="invClientName" style="margin: 5px 0; color: #020617;"></h3>
         </div>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
             <thead>
                 <tr style="background: #F1F5F9;">
-                    <th style="padding: 10px; text-align: left; color: black; border-bottom: 1px solid #E2E8F0;">Description</th>
-                    <th style="padding: 10px; text-align: right; color: black; border-bottom: 1px solid #E2E8F0;">Amount</th>
+                    <th style="padding: 10px; text-align: left; color: black; border-bottom: 1px solid #E2E8F0;">
+                        Deskripsi Layanan</th>
+                    <th style="padding: 10px; text-align: right; color: black; border-bottom: 1px solid #E2E8F0;">Jumlah (Rp)
+                    </th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td id="invService" style="padding: 15px 10px; border-bottom: 1px solid #E2E8F0;"></td>
-                    <td id="invAmount" style="padding: 15px 10px; text-align: right; border-bottom: 1px solid #E2E8F0; font-weight: bold;"></td>
+                    <td id="invAmount"
+                        style="padding: 15px 10px; text-align: right; border-bottom: 1px solid #E2E8F0; font-weight: bold;">
+                    </td>
                 </tr>
             </tbody>
         </table>
         <div style="text-align: right;">
-            <p style="margin: 0; color: #64748B;">Total Amount Due:</p>
+            <p style="margin: 0; color: #64748B;">Total Tagihan:</p>
             <h2 id="invTotal" style="margin: 5px 0; color: #020617;"></h2>
         </div>
         <div style="margin-top: 50px; border-top: 1px solid #E2E8F0; pt: 20px; font-size: 0.8rem; color: #94A3B8;">
-            <p>Thank you for choosing SwichUI. Payment is due within 7 days.</p>
+            <p>Terima kasih telah mempercayai SwichUI. Pembayaran jatuh tempo dalam 7 hari.</p>
         </div>
     </div>
 
@@ -217,20 +255,20 @@
     <div id="projectModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="modalTitle">Add New Project</h2>
+                <h2 id="modalTitle">Tambah Proyek Baru</h2>
                 <span style="cursor:pointer" onclick="closeModal()">&times;</span>
             </div>
             <form id="projectForm">
                 <input type="hidden" id="projectId">
-                
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>Nama Lengkap</label>
-                        <input type="text" id="clientName" required placeholder="Masukkan nama Anda">
+                        <input type="text" id="clientName" required placeholder="Nama Klien">
                     </div>
                     <div class="form-group">
-                        <label>Nama Brand/Usaha</label>
-                        <input type="text" id="namaBrand" placeholder="Contoh: Kopi Senja">
+                        <label>Nama Brand / Usaha</label>
+                        <input type="text" id="namaBrand" placeholder="Contoh: Kopi Jaya">
                     </div>
                 </div>
 
@@ -238,36 +276,36 @@
                     <div class="form-group">
                         <label>Layanan</label>
                         <select id="serviceType">
-                            <option value="Poster Single">Poster Single</option>
+                            <option value="Logo Design">Logo Design</option>
+                            <option value="UI/UX Design">UI/UX Design</option>
                             <option value="Feed IG Single">Feed IG Single</option>
                             <option value="Carousel 3 Slide">Carousel 3 Slide</option>
                             <option value="Carousel 5 Slide">Carousel 5 Slide</option>
-                            <option value="Logo Design">Logo Design</option>
-                            <option value="UI/UX Design">UI/UX Design</option>
-                            <option value="Banner">Banner</option>
-                            <option value="Lainnya">Lainnya</option>
+                            <option value="Poster Single">Poster Single</option>
+                            <option value="Banner Design">Banner Design</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Deadline</label>
-                        <input type="text" id="projectDeadline" placeholder="Contoh: 3 Hari / 1 Minggu">
+                        <input type="text" id="projectDeadline" required placeholder="Contoh: 1 minggu atau 2024-05-20">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>WhatsApp</label>
-                        <input type="text" id="kontakWA" placeholder="Contoh: 082249634912">
+                        <input type="text" id="kontakWA" placeholder="0812...">
                     </div>
                     <div class="form-group">
                         <label>Target Audiens</label>
-                        <input type="text" id="targetAudiens" placeholder="Contoh: Remaja, Pekerja, dll">
+                        <input type="text" id="targetAudiens" placeholder="Contoh: Anak muda 18-25">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Brief / Kebutuhan Desain</label>
-                    <textarea id="briefDesain" rows="4" placeholder="Ceritakan detail kebutuhan desain Anda..."></textarea>
+                    <textarea id="briefDesain" rows="4"
+                        placeholder="Ceritakan detail kebutuhan desain Anda..."></textarea>
                 </div>
 
                 <div class="form-row">
@@ -276,20 +314,22 @@
                         <input type="text" id="referensiDesain" placeholder="Link (Pinterest/Behance) atau deskripsi">
                     </div>
                     <div class="form-group">
-                        <label>File/Asset (Jika Ada)</label>
+                        <label>File/Asset (Jika ada)</label>
                         <input type="text" id="fileAsset" placeholder="Link Google Drive/Dropbox">
                     </div>
                 </div>
 
                 <hr style="border: none; border-top: 1px solid var(--border-color); margin: 1rem 0;">
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; font-weight: 600;">Internal Management</p>
+                <p
+                    style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; font-weight: 600;">
+                    Manajemen Internal</p>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Priority</label>
+                        <label>Prioritas</label>
                         <select id="priorityLevel">
                             <option value="Low">Low</option>
-                            <option value="Medium" selected>Medium</option>
+                            <option value="Medium">Medium</option>
                             <option value="Urgent">Urgent</option>
                         </select>
                     </div>
@@ -307,18 +347,18 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Total Contract (Rp)</label>
+                        <label>Total Kontrak (Rp)</label>
                         <input type="number" id="totalValue" required placeholder="0">
                     </div>
                     <div class="form-group">
-                        <label>DP Paid (Rp)</label>
+                        <label>DP Masuk (Rp)</label>
                         <input type="number" id="dpPaid" value="0" placeholder="0">
                     </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn-add">Save Project</button>
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Batal</button>
+                    <button type="submit" class="btn-add">Simpan Proyek</button>
                 </div>
             </form>
         </div>
@@ -328,11 +368,28 @@
     <div id="confirmModal" class="modal">
         <div class="modal-content confirm-content">
             <div class="confirm-icon">⚠️</div>
-            <h2 id="confirmTitle">Are you sure?</h2>
-            <p id="confirmMessage" style="color:var(--text-muted); margin: 1rem 0 2rem 0;">This action cannot be undone.</p>
+            <h2 id="confirmTitle">Apakah Anda yakin?</h2>
+            <p id="confirmMessage" style="color:var(--text-muted); margin: 1rem 0 2rem 0;">Tindakan ini tidak dapat dibatalkan.
+            </p>
             <div style="display:flex; gap:1rem; justify-content: center;">
-                <button class="btn-secondary" onclick="closeConfirm()">Cancel</button>
-                <button id="confirmBtn" class="btn-danger">Yes, Delete</button>
+                <button class="btn-secondary" onclick="closeConfirm()">Batal</button>
+                <button id="confirmBtn" class="btn-danger">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client Detail Modal -->
+    <div id="clientDetailModal" class="modal">
+        <div class="modal-content detail-content">
+            <div class="modal-header">
+                <h2>Detail Proyek & Brief</h2>
+                <span style="cursor:pointer" onclick="closeClientModal()">&times;</span>
+            </div>
+            <div id="clientDetailBody" class="detail-body">
+                <!-- Injected via JS -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeClientModal()">Tutup</button>
             </div>
         </div>
     </div>
@@ -342,4 +399,5 @@
 
     <script src="script.js?v=2"></script>
 </body>
+
 </html>
