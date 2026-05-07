@@ -782,3 +782,252 @@ select.status-select {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px var(--accent-gold-glow);
 }
+
+/* --- INVOICE PREMIUM STYLES --- */
+.invoice-box {
+    background: white;
+    color: #1e293b;
+    padding: 3rem;
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: 'Inter', sans-serif;
+    position: relative;
+    overflow: hidden;
+}
+
+.status-stamp {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-size: 8rem;
+    font-weight: 900;
+    color: rgba(16, 185, 129, 0.15);
+    border: 15px solid rgba(16, 185, 129, 0.15);
+    padding: 1rem 3rem;
+    border-radius: 20px;
+    text-transform: uppercase;
+    pointer-events: none;
+    z-index: 10;
+    display: none;
+}
+
+.invoice-box.is-paid {
+    border-top: 10px solid #10b981;
+}
+
+.invoice-box.is-paid .invoice-title {
+    color: #10b981;
+}
+
+.invoice-box.is-paid .status-stamp {
+    color: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.invoice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 2rem;
+    margin-bottom: 2rem;
+}
+
+.invoice-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.company-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #334155;
+    margin: 0.5rem 0 0.25rem 0;
+}
+
+.company-tagline {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.invoice-meta {
+    text-align: right;
+}
+
+.meta-item {
+    margin-bottom: 0.75rem;
+}
+
+.meta-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.meta-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.invoice-billing {
+    margin-bottom: 3rem;
+}
+
+.section-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.client-name {
+    font-size: 1.5rem;
+    color: #0f172a;
+    margin: 0 0 0.5rem 0;
+}
+
+.client-brand {
+    font-size: 1rem;
+    color: #334155;
+    font-weight: 500;
+    margin: 0 0 0.25rem 0;
+}
+
+.client-contact {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.invoice-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2rem;
+}
+
+.invoice-table th {
+    background: #f8fafc;
+    color: #475569;
+    padding: 1rem;
+    font-weight: 700;
+    text-align: left !important;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.invoice-table td {
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.text-right {
+    text-align: right !important;
+}
+
+.service-desc {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.invoice-summary {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+    margin-bottom: 4rem;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    width: 300px;
+    font-size: 0.9375rem;
+    color: #475569;
+}
+
+.summary-row.total {
+    border-top: 2px solid #e2e8f0;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.text-success {
+    color: #059669 !important;
+}
+
+.invoice-footer {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.payment-info h4 {
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+    color: #0f172a;
+}
+
+.payment-info p {
+    font-size: 0.875rem;
+    margin: 0.25rem 0;
+    color: #475569;
+}
+
+.footer-note {
+    text-align: right;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    line-height: 1.5;
+}
+
+.branding {
+    margin-top: 1rem;
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+/* --- PRINT OPTIMIZATION --- */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    #invoiceTemplate,
+    #invoiceTemplate *,
+    .invoice-box,
+    .invoice-box * {
+        visibility: visible;
+    }
+
+    #invoiceTemplate {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        display: block !important;
+    }
+
+    .invoice-box {
+        padding: 0;
+        max-width: 100%;
+    }
+
+    /* Remove browser headers/footers */
+    @page {
+        margin: 20mm;
+    }
+}

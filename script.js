@@ -20,6 +20,7 @@ let projects = JSON.parse(localStorage.getItem('swichui_projects')) || [
 // --- SESSION SECURITY CONFIG ---
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 Menit (dalam milidetik)
 let logoutTimer;
+let financialChartInstance = null;
 
 const statusProgressMap = {
     "Briefing": 20,
@@ -215,6 +216,8 @@ function initApp() {
     renderLeadSources();
     renderClientTable();
     renderRecentClients();
+    renderFinanceView();
+    updateTrendAnalysis();
     setupEventListeners();
     
     // Real-time listener for orders table (if using Supabase)
@@ -229,6 +232,8 @@ function initApp() {
                     renderFinancialChart();
                     renderClientTable();
                     renderRecentClients();
+                    renderFinanceView();
+                    updateTrendAnalysis();
                     showToast('Data diperbarui dari server...', 'success');
                 });
             })
@@ -554,6 +559,8 @@ async function saveAndRefresh(syncToSupabase = true) {
     updateOverview();
     renderProductionStatus();
     renderFinancialChart();
+    renderFinanceView();
+    updateTrendAnalysis();
 }
 
 // --- UI HELPERS ---
@@ -707,74 +714,255 @@ function closeClientModal() {
     document.getElementById('clientDetailModal').style.display = 'none';
 }
 
-function renderFinancialChart() {
-    const container = document.getElementById('financialChart');
-    if (!container) return;
-    container.innerHTML = '';
+function renderFinanceView() {
+    const tableBody = document.getElementById('financeTableBody');
+    const totalOmzetEl = document.getElementById('finance-total-omzet');
+    const totalCashEl = document.getElementById('finance-total-cash');
+    const totalUnpaidEl = document.getElementById('finance-total-unpaid');
 
-    // Grouping logic: Get data for the last 4 months
-    const monthlyData = {};
-    const now = new Date();
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
 
-    // Pre-fill last 4 months to ensure chart isn't empty and stays consistent
-    for (let i = 3; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const key = d.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
-        monthlyData[key] = { gross: 0, net: 0, label: key };
+    let totalOmzet = 0;
+    let totalCash = 0;
+    let totalUnpaid = 0;
+
+    projects.forEach(p => {
+        const omzet = p.value || 0;
+        const cash = p.dp || 0;
+        const unpaid = omzet - cash;
+
+        totalOmzet += omzet;
+        totalCash += cash;
+        totalUnpaid += unpaid;
+
+        const row = document.createElement('tr');
+        const statusClass = unpaid <= 0 ? 'badge-green' : (cash > 0 ? 'badge-blue' : 'badge-red');
+        const statusText = unpaid <= 0 ? 'LUNAS' : (cash > 0 ? 'DP MASUK' : 'BELUM BAYAR');
+
+        row.innerHTML = `
+            <td>
+                <div style="font-weight:600">${p.client}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted)">${p.service}</div>
+            </td>
+            <td>Rp ${omzet.toLocaleString('id-ID')}</td>
+            <td style="color: var(--success)">Rp ${cash.toLocaleString('id-ID')}</td>
+            <td style="color: ${unpaid > 0 ? 'var(--warning)' : 'var(--text-muted)'}">Rp ${unpaid.toLocaleString('id-ID')}</td>
+            <td><span class="badge ${statusClass}">${statusText}</span></td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    if (totalOmzetEl) totalOmzetEl.innerHTML = `<span>Rp</span>${totalOmzet.toLocaleString('id-ID')}`;
+    if (totalCashEl) totalCashEl.innerHTML = `<span>Rp</span>${totalCash.toLocaleString('id-ID')}`;
+    if (totalUnpaidEl) totalUnpaidEl.innerHTML = `<span>Rp</span>${totalUnpaid.toLocaleString('id-ID')}`;
+
+    // --- MONTHLY SUMMARY LOGIC ---
+    const monthlyTableBody = document.getElementById('monthlyFinanceTableBody');
+    if (!monthlyTableBody) return;
+    monthlyTableBody.innerHTML = '';
+
+    const monthlyStats = {};
+    projects.forEach(p => {
+        const d = new Date(p.deadline);
+        if (isNaN(d)) return;
+        const key = d.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+
+        if (!monthlyStats[key]) {
+            monthlyStats[key] = { gross: 0, expense: 0, net: 0 };
+        }
+        monthlyStats[key].gross += (p.value || 0);
+    });
+
+    // Sort months (newest first)
+    const sortedMonths = Object.keys(monthlyStats).sort((a, b) => new Date(b) - new Date(a));
+
+    sortedMonths.forEach(month => {
+        const data = monthlyStats[month];
+        // Using the 26% expense / 74% net margin from dashboard stats
+        data.expense = data.gross * 0.26;
+        data.net = data.gross * 0.74;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><div style="font-weight:600">${month}</div></td>
+            <td>Rp ${data.gross.toLocaleString('id-ID')}</td>
+            <td style="color: var(--danger)">- Rp ${Math.round(data.expense).toLocaleString('id-ID')}</td>
+            <td style="font-weight:700; color: var(--success)">Rp ${Math.round(data.net).toLocaleString('id-ID')}</td>
+        `;
+        monthlyTableBody.appendChild(row);
+    });
+}
+
+function updateTrendAnalysis() {
+    const popularList = document.getElementById('popularServicesList');
+    const recommendations = document.getElementById('trendRecommendations');
+    if (!popularList || !recommendations) return;
+
+    // 1. Calculate Service Frequencies
+    const serviceCounts = {};
+    projects.forEach(p => {
+        serviceCounts[p.service] = (serviceCounts[p.service] || 0) + 1;
+    });
+
+    const sortedServices = Object.entries(serviceCounts)
+        .sort((a, b) => b[1] - a[1]);
+
+    // 2. Render Popular Services List
+    popularList.innerHTML = '';
+    sortedServices.slice(0, 4).forEach(([service, count], index) => {
+        const percentage = Math.round((count / projects.length) * 100) || 0;
+        const item = document.createElement('div');
+        item.style.marginBottom = "0.75rem";
+        item.innerHTML = `
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom: 0.25rem;">
+                <span>${index + 1}. ${service}</span>
+                <span style="color: var(--accent-gold);">${count} Order (${percentage}%)</span>
+            </div>
+            <div class="progress-bar" style="height: 4px;"><div class="progress-fill" style="width: ${percentage}%; background: ${index === 0 ? 'var(--accent-gold)' : 'var(--primary-blue)'}"></div></div>
+        `;
+        popularList.appendChild(item);
+    });
+
+    // 3. Generate Strategic Recommendations
+    const topService = sortedServices[0] ? sortedServices[0][0] : null;
+    let insight = "";
+    
+    if (!topService) {
+        insight = "Belum ada data proyek yang cukup untuk melakukan analisis tren. Silakan tambahkan lebih banyak proyek.";
+    } else {
+        if (topService === "Logo Design" || topService === "UI/UX Design") {
+            insight = `Klien Anda sangat meminati <strong>${topService}</strong>. <br><br>
+                       <strong>Rekomendasi:</strong> Pertimbangkan untuk membuat paket bundling (misal: Logo + Branding Kit) untuk meningkatkan nilai kontrak. Fokuskan portofolio utama pada jenis desain ini karena conversion rate-nya tinggi.`;
+        } else if (topService.includes("Carousel") || topService.includes("Feed")) {
+            insight = `Tren menunjukkan permintaan tinggi pada <strong>Konten Media Sosial</strong>. <br><br>
+                       <strong>Rekomendasi:</strong> Ini adalah peluang untuk menawarkan sistem langganan bulanan (Retainer Model) daripada proyek satuan. Pastikan efisiensi workflow ditingkatkan agar margin keuntungan tetap tinggi pada volume order besar.`;
+        } else {
+            insight = `Layanan <strong>${topService}</strong> sedang menjadi primadona. <br><br>
+                       <strong>Rekomendasi:</strong> Maksimalkan promosi pada layanan ini. Anda juga bisa mencoba melakukan up-selling ke layanan yang lebih premium (seperti UI/UX) kepada klien yang puas dengan hasil ${topService} Anda.`;
+        }
     }
 
-    // Populate with real project data
+    recommendations.innerHTML = `<p>${insight}</p>`;
+}
+
+function renderFinancialChart() {
+    const ctx = document.getElementById('financialChart');
+    if (!ctx) return;
+
+    // Destroy existing chart to avoid overlay issues
+    if (financialChartInstance) {
+        financialChartInstance.destroy();
+    }
+
+    // Data processing logic
+    const monthlyData = {};
+    const now = new Date();
+    // Pre-fill last 6 months
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = d.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
+        monthlyData[key] = { gross: 0, net: 0, label: d.toLocaleString('id-ID', { month: 'short' }) };
+    }
+
     projects.forEach(p => {
         const d = new Date(p.deadline);
         if (isNaN(d)) return;
         const key = d.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
-
-        // Only count if it matches one of our displayed months
         if (monthlyData[key]) {
             monthlyData[key].gross += (p.value || 0);
-            // Net logic: 70% margin (consistent with updateOverview)
-            monthlyData[key].net += ((p.value || 0) * 0.7);
+            monthlyData[key].net += ((p.value || 0) * 0.74);
         }
     });
 
-    const dataPoints = Object.values(monthlyData);
-    const maxVal = Math.max(...dataPoints.map(m => m.gross), 1000000); // Scale relative to max gross, min 1M
+    const labels = Object.values(monthlyData).map(m => m.label);
+    const grossData = Object.values(monthlyData).map(m => m.gross);
+    const netData = Object.values(monthlyData).map(m => m.net);
 
-    dataPoints.forEach(d => {
-        const group = document.createElement('div');
-        group.className = 'chart-group';
-        group.style.flex = "1";
-        group.style.display = "flex";
-        group.style.flexDirection = "column";
-        group.style.alignItems = "center";
-        group.style.height = "100%";
-        group.style.justifyContent = "flex-end";
-
-        const barsContainer = document.createElement('div');
-        barsContainer.style.display = "flex";
-        barsContainer.style.alignItems = "flex-end";
-        barsContainer.style.gap = "4px";
-        barsContainer.style.height = "140px"; // Leave space for label
-        barsContainer.style.width = "100%";
-        barsContainer.style.justifyContent = "center";
-
-        const grossHeight = (d.gross / maxVal) * 100;
-        const netHeight = (d.net / maxVal) * 100;
-
-        barsContainer.innerHTML = `
-            <div class="bar" style="height: ${grossHeight}%; width: 20px;" title="${d.label} Gross: Rp ${d.gross.toLocaleString('id-ID')}"></div>
-            <div class="bar bar-profit" style="height: ${netHeight}%; width: 20px;" title="${d.label} Net: Rp ${d.net.toLocaleString('id-ID')}"></div>
-        `;
-
-        const label = document.createElement('div');
-        label.style.fontSize = "0.65rem";
-        label.style.color = "var(--text-muted)";
-        label.style.marginTop = "8px";
-        label.innerText = d.label.split(' ')[0]; // Show only month name
-
-        group.appendChild(barsContainer);
-        group.appendChild(label);
-        container.appendChild(group);
+    financialChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Pemasukan Kotor',
+                    data: grossData,
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#3B82F6',
+                    pointRadius: 4
+                },
+                {
+                    label: 'Laba Bersih',
+                    data: netData,
+                    borderColor: '#D4AF37',
+                    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#D4AF37',
+                    pointRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: { 
+                        color: '#94A3B8', 
+                        font: { size: 10, family: 'Inter' },
+                        usePointStyle: true,
+                        boxWidth: 6
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#0B1120',
+                    titleColor: '#F8FAFC',
+                    bodyColor: '#94A3B8',
+                    borderColor: 'rgba(212, 175, 55, 0.2)',
+                    borderWidth: 1,
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                    ticks: {
+                        color: '#94A3B8',
+                        font: { size: 10 },
+                        callback: function(value) {
+                            if (value >= 1000000) return 'Rp' + (value/1000000).toFixed(1) + 'jt';
+                            if (value >= 1000) return 'Rp' + (value/1000).toFixed(0) + 'rb';
+                            return 'Rp' + value;
+                        }
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94A3B8', font: { size: 10 } }
+                }
+            }
+        }
     });
 }
 
@@ -795,19 +983,85 @@ function renderLeadSources() {
 function generateInvoice(projectId) {
     const proj = projects.find(p => p.id === projectId);
     if (!proj) return;
-    document.getElementById('invId').innerText = `#INV-2024-${String(proj.id).slice(-3)}`;
+
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
+
+    const remaining = proj.value - proj.dp;
+    const isPaid = remaining <= 0;
+
+    // Fill placeholders
+    document.getElementById('invId').innerText = `#INV-2024-${String(proj.id).slice(-3).toUpperCase()}`;
+    document.getElementById('invDate').innerText = formattedDate;
     document.getElementById('invClientName').innerText = proj.client;
+    document.getElementById('invBrand').innerText = proj.namaBrand || '-';
+    document.getElementById('invContact').innerText = proj.contact || '-';
     document.getElementById('invService').innerText = proj.service;
-    document.getElementById('invAmount').innerText = `Rp ${proj.value.toLocaleString('id-ID')}`;
-    document.getElementById('invTotal').innerText = `Rp ${proj.value.toLocaleString('id-ID')}`;
+    
+    // Monetary values
+    const formatIDR = (val) => `Rp ${val.toLocaleString('id-ID')}`;
+    document.getElementById('invAmount').innerText = formatIDR(proj.value);
+    document.getElementById('invSubtotal').innerText = formatIDR(proj.value);
+    document.getElementById('invDP').innerText = formatIDR(proj.dp);
+    document.getElementById('invTotal').innerText = isPaid ? 'LUNAS (PAID)' : formatIDR(remaining);
+
+    // Paid Status Appearance
+    const container = document.getElementById('invoiceContainer');
+    const stamp = document.getElementById('invStatusStamp');
+    
+    if (isPaid) {
+        container.classList.add('is-paid');
+        stamp.style.display = 'block';
+    } else {
+        container.classList.remove('is-paid');
+        stamp.style.display = 'none';
+    }
+
     const template = document.getElementById('invoiceTemplate');
     template.style.display = 'block';
-    showToast('Menyiapkan invoice untuk dicetak...', 'success');
+    
+    showToast(isPaid ? 'Menyiapkan kwitansi pelunasan...' : 'Menyiapkan invoice tagihan...', 'success');
+
     setTimeout(() => {
         const printWindow = window.open('', '_blank');
-        printWindow.document.write('<html><body>' + template.innerHTML + '</body></html>');
+        const styleLink = document.querySelector('link[href="style.css"]').href;
+        const invoiceContent = template.innerHTML;
+        
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Invoice - ${proj.client}</title>
+                    <link rel="stylesheet" href="${styleLink}">
+                    <style>
+                        body { background: white !important; margin: 0; padding: 0; }
+                        .invoice-box { display: block !important; visibility: visible !important; }
+                        .invoice-box * { visibility: visible !important; }
+                    </style>
+                </head>
+                <body>
+                    ${invoiceContent}
+                    <script>
+                        // Wait for stylesheet to load
+                        const link = document.querySelector('link');
+                        if (link.sheet) {
+                            window.print();
+                            window.close();
+                        } else {
+                            link.onload = () => {
+                                window.print();
+                                window.close();
+                            };
+                        }
+                    </script>
+                </body>
+            </html>
+        `);
         printWindow.document.close();
-        printWindow.print();
         template.style.display = 'none';
     }, 500);
 }

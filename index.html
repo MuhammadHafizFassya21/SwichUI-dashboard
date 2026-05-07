@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="style.css">
     <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -100,8 +102,30 @@
                     <!-- Financial Health -->
                     <div class="card chart-container">
                         <div class="card-title">Kesehatan Keuangan (Kotor vs Bersih)</div>
-                        <div class="simple-bar-chart" id="financialChart">
-                            <!-- Bars injected via JS -->
+                        <div style="height: 200px; width: 100%;">
+                            <canvas id="financialChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Trend Analysis & Recommendations -->
+                    <div class="card" style="grid-column: span 12; background: linear-gradient(135deg, var(--card-bg), rgba(212, 175, 55, 0.05)); border: 1px solid var(--gold-border);">
+                        <div class="card-title" style="color: var(--accent-gold);">
+                            <span>📈 Analisis Tren & Rekomendasi Strategis</span>
+                            <span class="badge badge-gold">AI Insight</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem;">
+                            <div>
+                                <h4 style="font-size: 0.875rem; margin-bottom: 1rem; color: var(--text-main);">Layanan Paling Diminati</h4>
+                                <div id="popularServicesList">
+                                    <!-- Dynamic list injected via JS -->
+                                </div>
+                            </div>
+                            <div style="border-left: 1px solid var(--border-color); padding-left: 2rem;">
+                                <h4 style="font-size: 0.875rem; margin-bottom: 1rem; color: var(--text-main);">Rekomendasi Optimalisasi</h4>
+                                <div id="trendRecommendations" style="font-size: 0.875rem; line-height: 1.6; color: var(--text-muted);">
+                                    <!-- Dynamic recommendations injected via JS -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -110,13 +134,15 @@
             <!-- PROJECTS VIEW -->
             <section id="view-projects" class="content-view">
                 <div class="card table-container">
-                    <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div class="card-title"
+                        style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                         <div>
                             Pelacakan Proyek Aktif
-                            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Proyek yang sedang berjalan</span>
+                            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Proyek yang
+                                sedang berjalan</span>
                         </div>
                         <div class="search-box">
-                            <input type="text" id="projectSearch" placeholder="Cari Nama, ID, atau Brand..." 
+                            <input type="text" id="projectSearch" placeholder="Cari Nama, ID, atau Brand..."
                                 style="background: var(--bg-dark); border: 1px solid var(--border-color); color: white; padding: 0.5rem 1rem; border-radius: 8px; width: 300px; font-size: 0.875rem;">
                         </div>
                     </div>
@@ -143,7 +169,8 @@
                 <div class="card table-container" style="margin-top: 2rem; border-top: 2px solid var(--success);">
                     <div class="card-title">
                         Arsip Proyek Selesai
-                        <span style="font-size: 0.75rem; color: var(--text-muted);">Riwayat proyek yang telah rampung</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Riwayat proyek yang telah
+                            rampung</span>
                     </div>
                     <table id="archiveTable">
                         <thead>
@@ -169,15 +196,55 @@
             <!-- FINANCES VIEW -->
             <section id="view-finances" class="content-view">
                 <div class="dashboard-grid">
-                    <div class="card stat-card" style="grid-column: span 6;">
-                        <div class="card-title">Analisis Keuangan Detail</div>
-                        <div class="stat-value">Segera Hadir</div>
-                        <p style="color:var(--text-muted); font-size:0.8rem;">Fitur untuk melacak langganan software
-                            dan biaya iklan sedang dikembangkan.</p>
+                    <div class="card stat-card" style="grid-column: span 4;">
+                        <div class="card-title">Total Omzet Keseluruhan</div>
+                        <div id="finance-total-omzet" class="stat-value"><span>Rp</span>0</div>
+                        <p class="stat-label">Nilai total seluruh kontrak</p>
                     </div>
-                    <div class="card stat-card" style="grid-column: span 6;">
-                        <div class="card-title">Arus Kas (Cash Flow)</div>
-                        <div class="stat-value">Segera Hadir</div>
+                    <div class="card stat-card" style="grid-column: span 4;">
+                        <div class="card-title">Uang Masuk (Cash In)</div>
+                        <div id="finance-total-cash" class="stat-value" style="color: var(--success);"><span>Rp</span>0</div>
+                        <p class="stat-label">Total DP & pelunasan diterima</p>
+                    </div>
+                    <div class="card stat-card" style="grid-column: span 4;">
+                        <div class="card-title">Piutang (Unpaid)</div>
+                        <div id="finance-total-unpaid" class="stat-value" style="color: var(--warning);"><span>Rp</span>0</div>
+                        <p class="stat-label">Tagihan yang belum dibayar</p>
+                    </div>
+
+                    <div class="card table-container" style="grid-column: span 12;">
+                        <div class="card-title">Rincian Transaksi per Proyek</div>
+                        <table id="financeTable">
+                            <thead>
+                                <tr>
+                                    <th>Proyek / Klien</th>
+                                    <th>Total Kontrak</th>
+                                    <th>Dibayar (Cash)</th>
+                                    <th>Sisa (Piutang)</th>
+                                    <th>Status Pembayaran</th>
+                                </tr>
+                            </thead>
+                            <tbody id="financeTableBody">
+                                <!-- Data injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="card table-container" style="grid-column: span 12; margin-top: 2rem; border-top: 2px solid var(--primary-blue);">
+                        <div class="card-title">Rekap Keuangan Bulanan</div>
+                        <table id="monthlyFinanceTable">
+                            <thead>
+                                <tr>
+                                    <th>Bulan</th>
+                                    <th>Pemasukan Kotor (Omzet)</th>
+                                    <th>Pengeluaran (Est. 26%)</th>
+                                    <th>Laba Bersih</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monthlyFinanceTableBody">
+                                <!-- Data injected via JS -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
@@ -207,47 +274,78 @@
     </div> <!-- End app-container -->
 
     <!-- Invoice Template (Hidden) -->
-    <div id="invoiceTemplate"
-        style="display: none; background: white; color: black; padding: 40px; width: 800px; font-family: sans-serif;">
-        <div
-            style="display: flex; justify-content: space-between; border-bottom: 2px solid #D4AF37; padding-bottom: 20px; margin-bottom: 20px;">
-            <div>
-                <h1 style="margin: 0; color: #020617;">TAGIHAN (INVOICE)</h1>
-                <p style="margin: 5px 0; color: #64748B;">SwichUI Digital Agency</p>
+    <div id="invoiceTemplate" style="display: none;">
+        <div id="invoiceContainer" class="invoice-box">
+            <div id="invStatusStamp" class="status-stamp">LUNAS</div>
+            <header class="invoice-header">
+                <div class="company-info">
+                    <h1 class="invoice-title">TAGIHAN (INVOICE)</h1>
+                    <p class="company-name">SwichUI Digital Agency</p>
+                    <p class="company-tagline">Solusi Desain Digital Premium</p>
+                </div>
+                <div class="invoice-meta">
+                    <div class="meta-item">
+                        <span class="meta-label">Nomor Invoice</span>
+                        <span id="invId" class="meta-value"></span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Tanggal Terbit</span>
+                        <span id="invDate" class="meta-value"></span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="invoice-billing">
+                <div class="billing-section">
+                    <span class="section-label">DITUJUKAN KE:</span>
+                    <h3 id="invClientName" class="client-name"></h3>
+                    <p id="invBrand" class="client-brand"></p>
+                    <p id="invContact" class="client-contact"></p>
+                </div>
             </div>
-            <div style="text-align: right;">
-                <h3 id="invId" style="margin: 0; color: #D4AF37;"></h3>
-                <p style="margin: 5px 0; color: #64748B;">Tanggal: ${new Date().toLocaleDateString('id-ID')}</p>
+
+            <table class="invoice-table">
+                <thead>
+                    <tr>
+                        <th>Deskripsi Layanan</th>
+                        <th class="text-right">Total (Rp)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td id="invService" class="service-desc"></td>
+                        <td id="invAmount" class="service-price text-right"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="invoice-summary">
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span id="invSubtotal"></span>
+                </div>
+                <div class="summary-row">
+                    <span>DP Masuk (Sudah Dibayar)</span>
+                    <span id="invDP" class="text-success"></span>
+                </div>
+                <div class="summary-row total">
+                    <span>Sisa Tagihan (Balance Due)</span>
+                    <span id="invTotal"></span>
+                </div>
             </div>
-        </div>
-        <div style="margin-bottom: 30px;">
-            <p style="margin: 0; color: #64748B; text-transform: uppercase; font-size: 0.8rem; font-weight: bold;">Ditujukan Ke:</p>
-            <h3 id="invClientName" style="margin: 5px 0; color: #020617;"></h3>
-        </div>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-            <thead>
-                <tr style="background: #F1F5F9;">
-                    <th style="padding: 10px; text-align: left; color: black; border-bottom: 1px solid #E2E8F0;">
-                        Deskripsi Layanan</th>
-                    <th style="padding: 10px; text-align: right; color: black; border-bottom: 1px solid #E2E8F0;">Jumlah (Rp)
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td id="invService" style="padding: 15px 10px; border-bottom: 1px solid #E2E8F0;"></td>
-                    <td id="invAmount"
-                        style="padding: 15px 10px; text-align: right; border-bottom: 1px solid #E2E8F0; font-weight: bold;">
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        <div style="text-align: right;">
-            <p style="margin: 0; color: #64748B;">Total Tagihan:</p>
-            <h2 id="invTotal" style="margin: 5px 0; color: #020617;"></h2>
-        </div>
-        <div style="margin-top: 50px; border-top: 1px solid #E2E8F0; pt: 20px; font-size: 0.8rem; color: #94A3B8;">
-            <p>Terima kasih telah mempercayai SwichUI. Pembayaran jatuh tempo dalam 7 hari.</p>
+
+            <footer class="invoice-footer">
+                <div class="payment-info">
+                    <h4>Instruksi Pembayaran:</h4>
+                    <p>Bank Central Asia (BCA)</p>
+                    <p>No. Rekening: <strong>1234-5678-90</strong></p>
+                    <p>A/N: <strong>Muhammad Hafiz Fassya</strong></p>
+                </div>
+                <div class="footer-note">
+                    <p>Terima kasih telah mempercayai SwichUI. Pembayaran jatuh tempo dalam 7 hari sejak tanggal terbit.</p>
+                    <p class="branding">Generated by SwichUI Dashboard</p>
+                </div>
+            </footer>
         </div>
     </div>
 
@@ -369,7 +467,8 @@
         <div class="modal-content confirm-content">
             <div class="confirm-icon">⚠️</div>
             <h2 id="confirmTitle">Apakah Anda yakin?</h2>
-            <p id="confirmMessage" style="color:var(--text-muted); margin: 1rem 0 2rem 0;">Tindakan ini tidak dapat dibatalkan.
+            <p id="confirmMessage" style="color:var(--text-muted); margin: 1rem 0 2rem 0;">Tindakan ini tidak dapat
+                dibatalkan.
             </p>
             <div style="display:flex; gap:1rem; justify-content: center;">
                 <button class="btn-secondary" onclick="closeConfirm()">Batal</button>
