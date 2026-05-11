@@ -427,21 +427,31 @@ tr:last-child td {
 }
 
 .btn-small {
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
+    padding: 0.4rem 0.8rem;
+    min-width: 32px;
+    height: 32px;
+    border-radius: 6px;
     border: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-main);
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .btn-small:hover {
     background: var(--gold-border);
+}
+
+.btn-icon {
+    width: 32px;
+    padding: 0;
 }
 
 select.status-select {

@@ -177,7 +177,8 @@ async function fetchProjectsFromSupabase() {
                 targetAudiens: getField(['audiens', 'target'], "-"),
                 briefDesain: getField(['brief', 'pesan', 'kebutuhan', 'deskripsi'], ""),
                 referensiDesain: getField(['referensi', 'reference'], ""),
-                fileAsset: getField(['asset', 'file', 'drive'], "")
+                fileAsset: getField(['asset', 'file', 'drive'], ""),
+                is_deleted: row.is_deleted || false
             };
         });
     }
@@ -223,6 +224,7 @@ function initApp() {
     renderRecentClients();
     renderFinanceView();
     updateTrendAnalysis();
+    renderTrashTable();
     setupEventListeners();
     
     // Real-time listener for orders table (if using Supabase)
@@ -239,6 +241,7 @@ function initApp() {
                     renderRecentClients();
                     renderFinanceView();
                     updateTrendAnalysis();
+                    renderTrashTable();
                     showToast('Data diperbarui dari server...', 'success');
                 });
             })
@@ -305,6 +308,11 @@ function setupNavigation() {
             } else {
                 exportBtn.style.display = 'none';
             }
+
+            // Specific refresh for trash view
+            if (item.id === 'nav-trash') {
+                renderTrashTable();
+            }
         });
     });
 }
@@ -357,6 +365,7 @@ function renderSalesTable() {
 
     // Filter and Sort
     const filteredProjects = projects.filter(p => {
+        if (p.is_deleted) return false;
         const idStr = String(p.id).toLowerCase();
         const clientStr = p.client.toLowerCase();
         const brandStr = p.namaBrand.toLowerCase();
@@ -408,8 +417,8 @@ function renderSalesTable() {
             </td>
             <td>
                 <div style="display:flex; gap:0.5rem;">
-                    <button class="btn-small" title="Edit" onclick="openModal('${proj.id}')">✎</button>
-                    <button class="btn-small" title="Delete" onclick="handleDelete('${proj.id}')">🗑</button>
+                    <button class="btn-small btn-icon" title="Edit" onclick="openModal('${proj.id}')">✎</button>
+                    <button class="btn-small btn-icon" title="Delete" onclick="handleDelete('${proj.id}')">🗑</button>
                     ${proj.status === 'Selesai' && remaining <= 0 ? `<button class="btn-invoice" onclick="generateInvoice('${proj.id}')">Inv</button>` : ''}
                 </div>
             </td>
@@ -424,18 +433,53 @@ function renderSalesTable() {
 }
 
 async function handleDelete(id) {
-    const confirmed = await showConfirm('Hapus Proyek?', 'Apakah Anda yakin ingin menghapus proyek ini? Data tidak bisa dikembalikan.');
+    const confirmed = await showConfirm('Pindahkan ke Tempat Sampah?', 'Proyek ini akan disembunyikan dari laporan utama, tetapi tetap bisa dipulihkan nanti.');
+    if (confirmed) {
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('orders').update({ is_deleted: true }).eq('id', id);
+            if (error) {
+                showToast('Gagal memindahkan ke sampah: ' + error.message, 'error');
+                return;
+            }
+        }
+        const proj = projects.find(p => p.id === id);
+        if (proj) proj.is_deleted = true;
+        
+        saveAndRefresh(false);
+        showToast('Proyek dipindahkan ke Tempat Sampah', 'warning');
+    }
+}
+
+async function handleRestore(id) {
+    if (supabaseClient) {
+        const { error } = await supabaseClient.from('orders').update({ is_deleted: false }).eq('id', id);
+        if (error) {
+            showToast('Gagal memulihkan data: ' + error.message, 'error');
+            return;
+        }
+    }
+    const proj = projects.find(p => p.id === id);
+    if (proj) proj.is_deleted = false;
+    
+    saveAndRefresh(false);
+    renderTrashTable();
+    showToast('Data berhasil dipulihkan!', 'success');
+}
+
+async function handlePermanentDelete(id) {
+    const confirmed = await showConfirm('Hapus Permanen?', 'Tindakan ini tidak bisa dibatalkan. Data akan benar-benar hilang dari database.');
     if (confirmed) {
         if (supabaseClient) {
             const { error } = await supabaseClient.from('orders').delete().eq('id', id);
             if (error) {
-                showToast('Gagal menghapus dari Supabase: ' + error.message, 'error');
+                showToast('Gagal menghapus permanen: ' + error.message, 'error');
                 return;
             }
         }
         projects = projects.filter(p => p.id !== id);
-        saveAndRefresh(false); // false means don't sync all again
-        showToast('Proyek berhasil dihapus', 'success');
+        saveAndRefresh(false);
+        renderTrashTable();
+        showToast('Data dihapus secara permanen', 'error');
     }
 }
 
@@ -510,6 +554,7 @@ async function handleFormSubmit(e) {
     }
 
     saveAndRefresh(false);
+    renderTrashTable();
     closeModal();
     showToast(isEdit ? 'Proyek berhasil diperbarui' : 'Proyek baru berhasil ditambahkan');
 }
@@ -567,6 +612,7 @@ async function saveAndRefresh(syncToSupabase = true) {
     renderFinancialChart();
     renderFinanceView();
     updateTrendAnalysis();
+    renderTrashTable();
 }
 
 // --- UI HELPERS ---
@@ -620,9 +666,10 @@ function closeModal() {
 }
 
 function updateOverview() {
-    const totalRev = projects.reduce((acc, p) => acc + p.value, 0);
-    const activeCount = projects.filter(p => p.status !== 'Selesai').length;
-    const netProfit = projects.reduce((acc, p) => acc + (p.value * 0.7), 0);
+    const activeProjects = projects.filter(p => !p.is_deleted);
+    const totalRev = activeProjects.reduce((acc, p) => acc + p.value, 0);
+    const activeCount = activeProjects.filter(p => p.status !== 'Selesai').length;
+    const netProfit = activeProjects.reduce((acc, p) => acc + (p.value * 0.7), 0);
     const statValues = document.querySelectorAll('.stat-value');
     if (statValues.length >= 3) {
         statValues[0].innerHTML = `<span>Rp</span>${totalRev.toLocaleString('id-ID')}`;
@@ -636,7 +683,7 @@ function renderProductionStatus() {
     if (!container) return;
     container.innerHTML = '';
     Object.keys(statusProgressMap).forEach(s => {
-        const count = projects.filter(p => p.status === s).length;
+        const count = projects.filter(p => !p.is_deleted && p.status === s).length;
         const item = document.createElement('div');
         item.className = 'status-item';
         item.innerHTML = `
@@ -654,7 +701,7 @@ function renderClientTable() {
     
     // Group projects by client name and get the latest/most complete project for each
     const clientMap = {};
-    projects.forEach(p => {
+    projects.filter(p => !p.is_deleted).forEach(p => {
         const existing = clientMap[p.client];
         if (!existing) {
             clientMap[p.client] = p;
@@ -749,6 +796,40 @@ function viewClientDetail(projectId) {
     document.getElementById('clientDetailModal').style.display = 'flex';
 }
 
+function renderTrashTable() {
+    const tableBody = document.getElementById('trashTableBody');
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
+
+    const deletedProjects = projects.filter(p => p.is_deleted);
+    
+    if (deletedProjects.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem; color: var(--text-muted);">Tidak ada data di tempat sampah.</td></tr>';
+        return;
+    }
+
+    deletedProjects.forEach(proj => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td style="font-size: 0.7rem; font-family: monospace; color: var(--text-muted);">${typeof proj.id === 'string' ? proj.id.substring(0, 8) : proj.id}...</td>
+            <td>
+                <div style="font-weight:600">${proj.client}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${proj.namaBrand}</div>
+            </td>
+            <td>${proj.service}</td>
+            <td><span class="badge">${proj.status}</span></td>
+            <td>Rp ${proj.value.toLocaleString('id-ID')}</td>
+            <td>
+                <div style="display:flex; gap:0.5rem;">
+                    <button class="btn-small" style="background: rgba(16, 185, 129, 0.15); color: var(--success); border-color: rgba(16, 185, 129, 0.3);" title="Pulihkan" onclick="handleRestore('${proj.id}')">↩ Pulihkan</button>
+                    <button class="btn-small" style="background: rgba(239, 68, 68, 0.15); color: var(--danger); border-color: rgba(239, 68, 68, 0.3);" title="Hapus Permanen" onclick="handlePermanentDelete('${proj.id}')">🗑 Hapus</button>
+                </div>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
 function closeClientModal() {
     document.getElementById('clientDetailModal').style.display = 'none';
 }
@@ -766,7 +847,7 @@ function renderFinanceView() {
     let totalCash = 0;
     let totalUnpaid = 0;
 
-    projects.forEach(p => {
+    projects.filter(p => !p.is_deleted).forEach(p => {
         const omzet = p.value || 0;
         const cash = p.dp || 0;
         const unpaid = omzet - cash;
@@ -802,7 +883,7 @@ function renderFinanceView() {
     monthlyTableBody.innerHTML = '';
 
     const monthlyStats = {};
-    projects.forEach(p => {
+    projects.filter(p => !p.is_deleted).forEach(p => {
         const d = new Date(p.deadline);
         if (isNaN(d)) return;
         const key = d.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
@@ -839,8 +920,9 @@ function updateTrendAnalysis() {
     if (!popularList || !recommendations) return;
 
     // 1. Calculate Service Frequencies
+    const activeProjects = projects.filter(p => !p.is_deleted);
     const serviceCounts = {};
-    projects.forEach(p => {
+    activeProjects.forEach(p => {
         serviceCounts[p.service] = (serviceCounts[p.service] || 0) + 1;
     });
 
@@ -904,7 +986,7 @@ function renderFinancialChart() {
         monthlyData[key] = { gross: 0, net: 0, label: d.toLocaleString('id-ID', { month: 'short' }) };
     }
 
-    projects.forEach(p => {
+    projects.filter(p => !p.is_deleted).forEach(p => {
         const d = new Date(p.deadline);
         if (isNaN(d)) return;
         const key = d.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
@@ -1112,7 +1194,7 @@ function exportToCSV() {
     }
 
     const headers = ['ID', 'Klien', 'Brand', 'Layanan', 'Prioritas', 'Status', 'Revisi', 'Total Kontrak', 'DP', 'Sisa Tagihan', 'Deadline', 'Kontak'];
-    const rows = projects.map(p => [
+    const rows = projects.filter(p => !p.is_deleted).map(p => [
         p.id,
         `"${p.client}"`,
         `"${p.namaBrand}"`,

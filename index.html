@@ -47,6 +47,9 @@
                 <a href="#" class="nav-item" id="nav-projects">Proyek</a>
                 <a href="#" class="nav-item" id="nav-finances">Keuangan</a>
                 <a href="#" class="nav-item" id="nav-clients">Klien</a>
+                <a href="#" class="nav-item" id="nav-trash"
+                    style="margin-top: auto; color: var(--danger); border-top: 1px solid var(--border-color); padding-top: 1rem;">🗑
+                    Tempat Sampah</a>
             </nav>
 
             <div class="crm-section">
@@ -215,7 +218,8 @@
                     <div class="card stat-card" style="grid-column: span 4;">
                         <div class="card-title">Piutang (Unpaid)</div>
                         <div id="finance-total-unpaid" class="stat-value" style="color: var(--warning);">
-                            <span>Rp</span>0</div>
+                            <span>Rp</span>0
+                        </div>
                         <p class="stat-label">Tagihan yang belum dibayar</p>
                     </div>
 
@@ -273,6 +277,34 @@
                             </tr>
                         </thead>
                         <tbody id="clientTableBody">
+                            <!-- Data injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TRASH VIEW -->
+            <section id="view-trash" class="content-view">
+                <div class="card table-container" style="border-top: 2px solid var(--danger);">
+                    <div class="card-title" style="color: var(--danger);">
+                        🗑 Tempat Sampah (Data Terhapus)
+                        <span
+                            style="font-size: 0.75rem; color: var(--text-muted); display: block; text-transform: none; margin-top: 0.5rem;">Data
+                            di sini tidak akan muncul di laporan utama. Anda bisa memulihkan atau menghapusnya secara
+                            permanen.</span>
+                    </div>
+                    <table id="trashTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nama Klien / Brand</th>
+                                <th>Layanan</th>
+                                <th>Status Terakhir</th>
+                                <th>Total Kontrak</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trashTableBody">
                             <!-- Data injected via JS -->
                         </tbody>
                     </table>
