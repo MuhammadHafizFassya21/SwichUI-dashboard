@@ -724,6 +724,10 @@ function viewClientDetail(projectId) {
                 <label>Deadline</label>
                 <p>${proj.deadline}</p>
             </div>
+            <div class="detail-item">
+                <label>Total Kontrak</label>
+                <p style="font-weight: 700; color: var(--accent-gold);">Rp ${proj.value.toLocaleString('id-ID')}</p>
+            </div>
             <div class="detail-item" style="grid-column: span 2;">
                 <label>Target Audiens</label>
                 <p>${proj.targetAudiens || '-'}</p>
