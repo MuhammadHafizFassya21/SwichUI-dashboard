@@ -153,8 +153,13 @@ async function fetchProjectsFromSupabase() {
 
             // Smart mapping for brief and other details
             const getField = (keywords, defaultValue = "") => {
-                const key = Object.keys(row).find(k => keywords.some(kw => k.toLowerCase().includes(kw)));
-                return (key && row[key]) ? row[key] : defaultValue;
+                // Find all keys that match the keywords
+                const matchingKeys = Object.keys(row).filter(k => keywords.some(kw => k.toLowerCase().includes(kw)));
+                
+                // Prefer keys that have a non-empty value
+                const bestKey = matchingKeys.find(k => row[k] !== null && row[k] !== undefined && row[k] !== "") || matchingKeys[0];
+                
+                return (bestKey && row[bestKey] !== null && row[bestKey] !== undefined) ? row[bestKey] : defaultValue;
             };
 
             return {
@@ -468,6 +473,7 @@ async function handleFormSubmit(e) {
         kontak_wa: newProj.contact,
         target_audiens: newProj.targetAudiens,
         brief_desain: newProj.briefDesain,
+        brief_singkat: newProj.briefDesain, // Support both column names for compatibility
         referensi_desain: newProj.referensiDesain,
         file_asset: newProj.fileAsset,
         priority: newProj.priority,
@@ -646,10 +652,39 @@ function renderClientTable() {
     if (!tableBody) return;
     tableBody.innerHTML = '';
     
-    // Group projects by client name and get the latest project for each
+    // Group projects by client name and get the latest/most complete project for each
     const clientMap = {};
     projects.forEach(p => {
-        if (!clientMap[p.client] || new Date(p.deadline) > new Date(clientMap[p.client].deadline)) {
+        const existing = clientMap[p.client];
+        if (!existing) {
+            clientMap[p.client] = p;
+            return;
+        }
+
+        // Comparison logic: prefer more recent or more complete data
+        const dateA = new Date(existing.deadline);
+        const dateB = new Date(p.deadline);
+        
+        const isValidA = !isNaN(dateA.getTime());
+        const isValidB = !isNaN(dateB.getTime());
+
+        let isBetter = false;
+        if (isValidA && isValidB) {
+            isBetter = dateB > dateA;
+        } else {
+            // Fallback: Use ID/index (newer projects usually added later) or check if it has a brief
+            const hasBriefA = !!existing.briefDesain;
+            const hasBriefB = !!p.briefDesain;
+            
+            if (hasBriefB && !hasBriefA) {
+                isBetter = true;
+            } else if (hasBriefB === hasBriefA) {
+                // If both have/don't have brief, use ID comparison
+                isBetter = String(p.id) > String(existing.id);
+            }
+        }
+
+        if (isBetter) {
             clientMap[p.client] = p;
         }
     });
@@ -671,7 +706,7 @@ function renderClientTable() {
 }
 
 function viewClientDetail(projectId) {
-    const proj = projects.find(p => p.id == projectId);
+    const proj = projects.find(p => String(p.id) === String(projectId));
     if (!proj) return;
 
     const body = document.getElementById('clientDetailBody');
